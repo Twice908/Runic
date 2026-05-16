@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  clerkId   String    @unique
+  plan      Plan      @default(FREE)
+  projects  Project[]
+  createdAt DateTime  @default(now())
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  name         String
+  apiKeyHash   String        @unique
+  apiKeyPrefix String
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  logs         RequestLog[]
+  errors       ErrorEvent[]
+  checks       UptimeCheck[]
+  alerts       Alert[]
+  createdAt    DateTime      @default(now())
+}
+
+model RequestLog {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id])
+  method       String
+  route        String
+  statusCode   Int
+  responseTime Int
+  timestamp    DateTime
+}
+
+model ErrorEvent {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  message     String
+  stack       String?
+  route       String
+  statusCode  Int
+  count       Int      @default(1)
+  firstSeen   DateTime
+  lastSeen    DateTime
+}
+
+model UptimeCheck {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id])
+  url          String
+  status       String
+  responseTime Int?
+  checkedAt    DateTime
+}
+
+model Alert {
+  id          String  @id @default(cuid())
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id])
+  type        String
+  threshold   Float
+  channel     String
+  destination String
+  active      Boolean @default(true)
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
