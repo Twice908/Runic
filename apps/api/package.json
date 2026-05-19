@@ -18,7 +18,10 @@
     "fastify": "^4.28.0",
     "ioredis": "^5.4.0",
     "pino": "^9.4.0",
-    "zod": "^3.23.0"
+    "zod": "^3.23.0",
+    "dotenv": "^16.4.0",
+    "@clerk/backend": "^1.13.0",
+    "svix": "^1.21.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

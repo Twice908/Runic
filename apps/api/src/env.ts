@@ -6,6 +6,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string(),
   API_KEY_SECRET: z.string().min(32),
+  CLERK_SECRET_KEY: z.string().min(1),
+  CLERK_WEBHOOK_SECRET: z.string().min(1),
 })
 
 export const env = envSchema.parse(process.env)

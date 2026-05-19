@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes flash-new {
+  0% {
+    background-color: #eef2ff;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@layer utilities {
+  .animate-flash-new {
+    animation: flash-new 1s ease-out;
+  }
+}

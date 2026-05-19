@@ -1,0 +1,552 @@
+'use client'
+
+import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useAlerts, useAlertHistory } from '@/hooks/useAlerts'
+import type { AlertRule, AlertType, AlertChannel } from '@pulse/types'
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function maskDestination(channel: string, destination: string): string {
+  if (channel === 'slack') return 'Slack webhook'
+  if (destination.length <= 3) return '***'
+  return `${destination.slice(0, 3)}***`
+}
+
+function formatValue(type: string, value: number): string {
+  if (type === 'error_rate') return `${value.toFixed(1)}%`
+  if (type === 'response_time') return `${value}ms`
+  return String(value)
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
+// ── type cards ────────────────────────────────────────────────────────────────
+
+interface TypeCardProps {
+  value: AlertType
+  selected: boolean
+  onClick: () => void
+  icon: string
+  title: string
+  description: string
+}
+
+function TypeCard({ value, selected, onClick, icon, title, description }: TypeCardProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        'flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors',
+        selected
+          ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
+          : 'border-gray-200 bg-white hover:border-indigo-300',
+      ].join(' ')}
+    >
+      <span className="text-2xl">{icon}</span>
+      <span className="font-semibold text-gray-900 text-sm">{title}</span>
+      <span className="text-xs text-gray-500">{description}</span>
+    </button>
+  )
+}
+
+// ── alert rule card ───────────────────────────────────────────────────────────
+
+interface AlertCardProps {
+  alert: AlertRule
+  onToggle: (id: string, active: boolean) => void
+  onDelete: (id: string) => void
+  deleting: string | null
+  toggling: string | null
+}
+
+function AlertCard({ alert, onToggle, onDelete, deleting, toggling }: AlertCardProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const typeBadge: Record<string, string> = {
+    uptime: 'bg-blue-100 text-blue-700',
+    error_rate: 'bg-red-100 text-red-700',
+    response_time: 'bg-amber-100 text-amber-700',
+  }
+  const channelBadge: Record<string, string> = {
+    email: 'bg-purple-100 text-purple-700',
+    slack: 'bg-green-100 text-green-700',
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm flex items-start justify-between gap-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${typeBadge[alert.type] ?? 'bg-gray-100 text-gray-600'}`}>
+            {alert.type.replace('_', ' ')}
+          </span>
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${channelBadge[alert.channel] ?? 'bg-gray-100 text-gray-600'}`}>
+            {alert.channel === 'slack' ? 'Slack' : 'Email'}
+          </span>
+          {!alert.active && (
+            <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500">
+              Inactive
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-gray-600 truncate">{maskDestination(alert.channel, alert.destination)}</p>
+        {alert.type === 'uptime' && alert.url && (
+          <p className="text-xs text-gray-400 truncate mt-0.5">{alert.url}</p>
+        )}
+        {alert.type !== 'uptime' && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            Threshold: {alert.type === 'error_rate' ? `${alert.threshold}%` : `${alert.threshold}ms`}
+            {alert.route ? ` · Route: ${alert.route}` : ''}
+          </p>
+        )}
+        {alert.lastFired && (
+          <p className="text-xs text-gray-400 mt-0.5">Last fired: {relativeTime(alert.lastFired)}</p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {/* Active toggle */}
+        <button
+          onClick={() => onToggle(alert.id, !alert.active)}
+          disabled={toggling === alert.id}
+          className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50"
+          style={{ backgroundColor: alert.active ? '#4f46e5' : '#d1d5db' }}
+          title={alert.active ? 'Disable alert' : 'Enable alert'}
+        >
+          <span
+            className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform"
+            style={{ transform: alert.active ? 'translateX(18px)' : 'translateX(2px)' }}
+          />
+        </button>
+
+        {/* Delete */}
+        {confirmDelete ? (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onDelete(alert.id)}
+              disabled={deleting === alert.id}
+              className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50"
+            >
+              {deleting === alert.id ? 'Deleting…' : 'Confirm'}
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="text-xs text-gray-400 hover:text-gray-600"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+          >
+            Delete
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── creation form ─────────────────────────────────────────────────────────────
+
+interface CreateFormProps {
+  projectId: string
+  onCreated: () => void
+  onCancel: () => void
+}
+
+function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [alertType, setAlertType] = useState<AlertType>('uptime')
+  const [channel, setChannel] = useState<AlertChannel>('email')
+  const [threshold, setThreshold] = useState('')
+  const [url, setUrl] = useState('')
+  const [route, setRoute] = useState('')
+  const [destination, setDestination] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    setSubmitting(true)
+    setError(null)
+    try {
+      const body: Record<string, unknown> = {
+        type: alertType,
+        channel,
+        destination,
+        threshold: alertType === 'uptime' ? 0 : parseFloat(threshold),
+      }
+      if (alertType === 'uptime') body['url'] = url
+      if (alertType === 'response_time' && route) body['route'] = route
+
+      const res = await fetch(`/api/projects/${projectId}/alerts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const json = (await res.json()) as { error?: { message?: string } }
+        throw new Error(json.error?.message ?? `HTTP ${res.status}`)
+      }
+      onCreated()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create alert')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-6 mt-4 space-y-5">
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 text-xs font-medium">
+        {(['1', '2', '3'] as const).map((s, i) => (
+          <span key={s} className="flex items-center gap-2">
+            {i > 0 && <span className="text-gray-300">›</span>}
+            <span className={`rounded-full w-5 h-5 flex items-center justify-center ${
+              step === i + 1 ? 'bg-indigo-600 text-white' : step > i + 1 ? 'bg-indigo-200 text-indigo-700' : 'bg-gray-200 text-gray-400'
+            }`}>{s}</span>
+            <span className={step === i + 1 ? 'text-indigo-700' : 'text-gray-400'}>
+              {['Alert type', 'Settings', 'Notification'][i]}
+            </span>
+          </span>
+        ))}
+      </div>
+
+      {/* Step 1: type */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <p className="text-sm font-medium text-gray-700">What do you want to monitor?</p>
+          <div className="grid grid-cols-3 gap-3">
+            <TypeCard value="uptime" selected={alertType === 'uptime'} onClick={() => setAlertType('uptime')}
+              icon="🌐" title="Uptime Monitor" description="Ping a URL every 60s and alert when it goes down" />
+            <TypeCard value="error_rate" selected={alertType === 'error_rate'} onClick={() => setAlertType('error_rate')}
+              icon="🔴" title="Error Rate" description="Alert when error rate exceeds a threshold" />
+            <TypeCard value="response_time" selected={alertType === 'response_time'} onClick={() => setAlertType('response_time')}
+              icon="⏱" title="Response Time" description="Alert when P99 latency exceeds a threshold" />
+          </div>
+          <div className="flex justify-end">
+            <button onClick={() => setStep(2)} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: settings */}
+      {step === 2 && (
+        <div className="space-y-4">
+          <p className="text-sm font-medium text-gray-700">Configure your {alertType.replace('_', ' ')} alert</p>
+          {alertType === 'uptime' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">URL to monitor</label>
+              <input
+                type="url"
+                placeholder="https://api.example.com/health"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+          {alertType === 'error_rate' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Error rate threshold (%)</label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                placeholder="10"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">Alert fires when error rate exceeds this % over the last 5 minutes</p>
+            </div>
+          )}
+          {alertType === 'response_time' && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">P99 latency threshold (ms)</label>
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="1000"
+                  value={threshold}
+                  onChange={(e) => setThreshold(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Route filter (optional)</label>
+                <input
+                  type="text"
+                  placeholder="/api/users"
+                  value={route}
+                  onChange={(e) => setRoute(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">Leave blank to monitor all routes</p>
+              </div>
+            </>
+          )}
+          <div className="flex justify-between">
+            <button onClick={() => setStep(1)} className="text-sm text-gray-500 hover:text-gray-700">← Back</button>
+            <button
+              onClick={() => setStep(3)}
+              disabled={alertType === 'uptime' ? !url : !threshold}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-40"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: notification channel */}
+      {step === 3 && (
+        <div className="space-y-4">
+          <p className="text-sm font-medium text-gray-700">Where should we notify you?</p>
+          <div className="flex gap-2">
+            {(['email', 'slack'] as AlertChannel[]).map((c) => (
+              <button
+                key={c}
+                onClick={() => { setChannel(c); setDestination('') }}
+                className={[
+                  'rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
+                  channel === c ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-indigo-300',
+                ].join(' ')}
+              >
+                {c === 'email' ? '✉ Email' : '# Slack'}
+              </button>
+            ))}
+          </div>
+
+          {channel === 'email' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Email address</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+          {channel === 'slack' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Slack webhook URL{' '}
+                <a
+                  href="https://api.slack.com/messaging/webhooks"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-500 underline"
+                >
+                  How to get this
+                </a>
+              </label>
+              <input
+                type="url"
+                placeholder="https://hooks.slack.com/services/..."
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-600">{error}</p>}
+
+          <div className="flex justify-between">
+            <button onClick={() => setStep(2)} className="text-sm text-gray-500 hover:text-gray-700">← Back</button>
+            <button
+              onClick={submit}
+              disabled={!destination || submitting}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-40"
+            >
+              {submitting ? 'Creating…' : 'Create Alert'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <button onClick={onCancel} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+    </div>
+  )
+}
+
+// ── page ──────────────────────────────────────────────────────────────────────
+
+export default function AlertsPage() {
+  const searchParams = useSearchParams()
+  const projectId = searchParams.get('project') ?? ''
+
+  const { data: alerts, isLoading, refetch } = useAlerts(projectId)
+  const [historyPage, setHistoryPage] = useState(1)
+  const { data: history, total: historyTotal, isLoading: historyLoading } = useAlertHistory(projectId, historyPage)
+
+  const [showForm, setShowForm] = useState(false)
+  const [toggling, setToggling] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  async function handleToggle(id: string, active: boolean) {
+    setToggling(id)
+    await fetch(`/api/projects/${projectId}/alerts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    })
+    setToggling(null)
+    refetch()
+  }
+
+  async function handleDelete(id: string) {
+    setDeleting(id)
+    await fetch(`/api/projects/${projectId}/alerts/${id}`, { method: 'DELETE' })
+    setDeleting(null)
+    refetch()
+  }
+
+  if (!projectId) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm text-gray-400">Select a project to manage alerts.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto p-8 space-y-10">
+      {/* Section 1 — Alert rules */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Alert Rules</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Get notified when things go wrong</p>
+          </div>
+          {!showForm && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              + Add Alert Rule
+            </button>
+          )}
+        </div>
+
+        {showForm && (
+          <CreateForm
+            projectId={projectId}
+            onCreated={() => { setShowForm(false); refetch() }}
+            onCancel={() => setShowForm(false)}
+          />
+        )}
+
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
+            <p className="text-sm font-medium text-gray-500">No alert rules configured</p>
+            <p className="text-xs text-gray-400 mt-1">Click "Add Alert Rule" to get started</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {alerts.map((alert) => (
+              <AlertCard
+                key={alert.id}
+                alert={alert}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+                toggling={toggling}
+                deleting={deleting}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Section 2 — Alert history */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900">Alert History</h2>
+
+        {historyLoading ? (
+          <div className="h-40 rounded-xl bg-gray-100 animate-pulse" />
+        ) : history.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
+            <p className="text-sm text-gray-500">No alerts have fired yet</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-hidden rounded-xl border border-gray-200">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Alert type</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">What triggered it</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Value</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Threshold</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Channel</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {history.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{relativeTime(entry.sentAt)}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-medium text-gray-700">{entry.type.replace('_', ' ')}</span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{entry.message}</td>
+                      <td className="px-4 py-3 font-medium text-red-600">{formatValue(entry.type, entry.triggeredValue)}</td>
+                      <td className="px-4 py-3 text-gray-500">{formatValue(entry.type, entry.threshold)}</td>
+                      <td className="px-4 py-3 capitalize text-gray-500">{entry.channel}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {historyTotal > 20 && (
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <span>Showing {(historyPage - 1) * 20 + 1}–{Math.min(historyPage * 20, historyTotal)} of {historyTotal}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                    disabled={historyPage === 1}
+                    className="rounded border border-gray-200 px-3 py-1 hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    ← Prev
+                  </button>
+                  <button
+                    onClick={() => setHistoryPage((p) => p + 1)}
+                    disabled={historyPage * 20 >= historyTotal}
+                    className="rounded border border-gray-200 px-3 py-1 hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </div>
+  )
+}

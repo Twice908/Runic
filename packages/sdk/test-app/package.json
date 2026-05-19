@@ -1,0 +1,14 @@
+{
+  "name": "pulse-sdk-test-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local test harness for @pulse/node SDK development",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@pulse/node": "file:../",
+    "express": "^4.18.2"
+  }
+}

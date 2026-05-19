@@ -15,4 +15,4 @@ if (process.env['NODE_ENV'] !== 'production') {
 }
 
 export default prisma
-export { PrismaClient } from '@prisma/client'
+export { PrismaClient, Plan, Prisma } from '@prisma/client'
