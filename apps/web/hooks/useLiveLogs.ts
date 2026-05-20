@@ -11,9 +11,8 @@ export function useLiveLogs(projectId: string, statusCategory: string) {
   const [isPolling, setIsPolling] = useState(false)
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set())
   const lastTimestampRef = useRef<string | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const fetchNewLogs = useCallback(async () => {
+  const fetchNewLogs = useCallback(async (signal: AbortSignal) => {
     if (document.visibilityState === 'hidden') return
 
     const params = new URLSearchParams()
@@ -21,7 +20,7 @@ export function useLiveLogs(projectId: string, statusCategory: string) {
     if (statusCategory !== 'all') params.set('statusCategory', statusCategory)
 
     try {
-      const res = await fetch(`/api/projects/${projectId}/logs?${params.toString()}`)
+      const res = await fetch(`/api/projects/${projectId}/logs?${params.toString()}`, { signal })
       if (!res.ok) return
 
       const data = (await res.json()) as { logs: RequestLogRow[] }
@@ -29,26 +28,35 @@ export function useLiveLogs(projectId: string, statusCategory: string) {
 
       if (incoming.length > 0) {
         lastTimestampRef.current = incoming[0].timestamp
-        const ids = new Set(incoming.map((l) => l.id))
-        setNewRowIds(ids)
+        const incomingIds = new Set(incoming.map((l) => l.id))
+        setNewRowIds(incomingIds)
         setTimeout(() => setNewRowIds(new Set()), 1200)
-        setLogs((prev) => [...incoming, ...prev].slice(0, MAX_LOG_BUFFER))
+        setLogs((prev) => {
+          const existingIds = new Set(prev.map((l) => l.id))
+          const fresh = incoming.filter((l) => !existingIds.has(l.id))
+          if (fresh.length === 0) return prev
+          return [...fresh, ...prev].slice(0, MAX_LOG_BUFFER)
+        })
       }
-    } catch {
-      // Polling failures are silent — live feed should never crash the UI
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
+      // Other polling failures are silent — live feed should never crash the UI
     }
   }, [projectId, statusCategory])
 
   useEffect(() => {
+    const controller = new AbortController()
+
     setLogs([])
     lastTimestampRef.current = null
-    fetchNewLogs()
+    fetchNewLogs(controller.signal)
 
     setIsPolling(true)
-    intervalRef.current = setInterval(fetchNewLogs, POLL_INTERVAL_MS)
+    const intervalId = setInterval(() => fetchNewLogs(controller.signal), POLL_INTERVAL_MS)
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      controller.abort()
+      clearInterval(intervalId)
       setIsPolling(false)
     }
   }, [fetchNewLogs])
