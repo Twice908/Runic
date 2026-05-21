@@ -21,16 +21,19 @@ Your Backend (Express / Fastify)
         │
         │  SDK fires async HTTP — never blocks your request
         ▼
-┌──────────────────┐
-│  Ingestion API   │  Fastify, <50ms p99, API key auth
-└────────┬─────────┘
-         ▼
+┌──────────────────────────────┐
+│  Ingestion API (Fastify)     │  <50ms p99, API key auth, rate limiter
+│  POST /ingest                │  → plan limit check → BullMQ addBulk
+│  Rate limit: 100 req / 10s  │  keyed per API key fingerprint (Redis)
+└────────────┬─────────────────┘
+             ▼
 ┌──────────────────┐
 │   Redis Queue    │  BullMQ — decouples ingestion from DB writes
 └────────┬─────────┘
          ▼
 ┌──────────────────┐
-│  Worker Service  │  Processes logs, groups errors, computes metrics
+│  Worker Service  │  Processes logs, groups errors, computes metrics,
+│                  │  evaluates alert rules, fires uptime pings
 └────────┬─────────┘
          ▼
    ┌─────┴──────────┐
@@ -53,11 +56,12 @@ TimescaleDB      PostgreSQL
 |-------|-----------|
 | Ingestion API | Node.js 22 + **Fastify 4** |
 | Queue | **Redis** + **BullMQ** |
+| Rate Limiter | **`@fastify/rate-limit`** — Redis-backed, per API key |
 | Metrics DB | **TimescaleDB** (PostgreSQL extension) |
 | App DB | **PostgreSQL** + **Prisma ORM** |
 | Dashboard | **Next.js 14** App Router + **Tailwind CSS** |
 | Auth | **Clerk** |
-| Billing | **Stripe** (metered usage-based) |
+| Billing | **Stripe** (metered usage-based) — Phase 6 |
 | Email Alerts | **Resend** |
 | Slack Alerts | Slack Webhooks |
 | SDK | **`@pulse/node`** npm package |
@@ -75,6 +79,7 @@ pulse/
 │   └── web/              Next.js 14 dashboard                  :3000
 ├── packages/
 │   ├── db/               Prisma schema + shared PrismaClient
+│   ├── sdk/              @pulse/node — Express + Fastify middleware
 │   └── types/            Shared TypeScript interfaces
 ├── TASKS.md              ← Living task tracker (check this first)
 ├── turbo.json
@@ -111,29 +116,15 @@ cp .env.example .env
 ### 3. Start infrastructure (Docker)
 
 ```bash
-# PostgreSQL + TimescaleDB
-docker run -d \
-  --name pulse-db \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=pulse \
-  -p 5432:5432 \
-  timescale/timescaledb:latest-pg16
-
-# Redis
-docker run -d \
-  --name pulse-redis \
-  -p 6379:6379 \
-  redis:7-alpine
+docker compose up -d   # starts TimescaleDB + Redis from docker-compose.yml
 ```
 
 ### 4. Set up the database
 
 ```bash
-# Generate Prisma client
-cd packages/db && npx prisma generate
-
-# Run migrations
+cd packages/db
 npx prisma migrate dev --name init
+npx prisma db execute --file ./prisma/timescale-setup.sql --schema ./prisma/schema.prisma
 ```
 
 ### 5. Run the monorepo
@@ -188,9 +179,23 @@ Response: `{ "success": true }` — always fast, processing is async.
 | `402` | Plan request limit reached |
 | `429` | Rate limited |
 
+### Rate Limiter
+
+All API routes are protected by a global Redis-backed rate limiter (`@fastify/rate-limit`):
+
+| Setting | Value |
+|---------|-------|
+| Window | 10 seconds |
+| Max requests | 100 per window |
+| Key | First 16 chars of API key (`rl:key:<fingerprint>`), or IP (`rl:ip:<addr>`) |
+| Storage | Redis (same instance as BullMQ) |
+| Bypass | Routes can opt out via `{ config: { rateLimit: false } }` — used by `POST /webhooks/clerk` |
+
+When the limit is exceeded the API returns `429 Too Many Requests`. The limit is currently plan-agnostic — all tiers share the same 100/10s ceiling. Per-plan rate limits (higher for Pro/Enterprise) are planned for Phase 6 alongside Stripe integration.
+
 ---
 
-## SDK Usage (Phase 5)
+## SDK Usage
 
 ```ts
 import { pulse } from '@pulse/node'
@@ -203,6 +208,24 @@ app.register(pulse, { apiKey: 'pk_live_...' })
 ```
 
 The SDK is fire-and-forget — it never blocks your request, never throws, and buffers events (flushes every 500ms or 10 events). If Pulse is down, your app keeps working.
+
+### Config options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `apiKey` | required | Your project API key |
+| `endpoint` | `https://api.usepulse.dev` | Override for self-hosted or local dev |
+| `ignoreRoutes` | `[]` | Route patterns to skip (e.g. `/health`) |
+| `ignoreMethods` | `[]` | HTTP methods to skip (e.g. `OPTIONS`) |
+
+### Build and publish SDK
+
+```bash
+cd packages/sdk
+npm run build          # compiles src/ → dist/
+npm publish --dry-run  # preview what gets uploaded
+npm publish --access public
+```
 
 ---
 
@@ -225,12 +248,12 @@ Billing via Stripe metered billing — you only pay for what you use.
 |-------|------|--------|
 | 0 | Planning | ✅ Complete |
 | 1a | Monorepo Boilerplate | ✅ Complete |
-| 1b | Ingestion Core (API key auth, real DB writes) | 🔨 In Progress |
-| 2 | Dashboard Foundation (project CRUD, log table, live feed) | 📋 Planned |
-| 3 | Analytics & Metrics (TimescaleDB aggregates, Recharts) | 📋 Planned |
-| 4 | Alerting & Uptime (Resend, Slack, repeatable jobs) | 📋 Planned |
-| 5 | SDK Polish (`@pulse/node` npm package) | 📋 Planned |
-| 6 | Billing (Stripe metered, plan enforcement) | 📋 Planned |
+| 1b | Ingestion Core (API key auth, rate limiting, real DB writes) | ✅ Complete |
+| 2 | Dashboard Foundation (project CRUD, log table, live feed) | ✅ Complete |
+| 3 | Analytics & Metrics (TimescaleDB aggregates, Recharts charts) | ✅ Complete |
+| 4 | Alerting & Uptime (Resend, Slack, repeatable BullMQ jobs) | ✅ Complete |
+| 5 | SDK (`@pulse/node` npm package — Express + Fastify) | ✅ Complete |
+| 6 | Billing (Stripe metered, plan enforcement, per-plan rate limits) | 📋 Planned |
 
 See [TASKS.md](./TASKS.md) for the detailed checklist of every task within each phase.
 
@@ -243,6 +266,7 @@ See [TASKS.md](./TASKS.md) for the detailed checklist of every task within each 
 - All data is **scoped to a project** — one API key can never read another project's data.
 - **Sensitive headers stripped** by the SDK (`Authorization`, `Cookie`, `X-Api-Key`).
 - GDPR: project deletion cascades to all logs, errors, and checks.
+- Clerk webhook signatures verified via **svix** before any DB write.
 
 ---
 
