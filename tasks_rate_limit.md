@@ -6,77 +6,76 @@
 
 ---
 
-## 📋 Phase RL-0 — Scaffolding & Schema
+## ✅ Phase RL-0 — Scaffolding & Schema (COMPLETE)
 
 > Set up the foundation before writing any enforcement logic. Nothing else can start without this.
 
-- [ ] Add `RateLimitRule` model to `packages/database/schema.prisma`
-- [ ] Add `RateLimitEvent` model to `packages/database/schema.prisma` (TimescaleDB hypertable)
-- [ ] Run migration: `pnpm --filter @pulse/database prisma migrate dev --name add_rate_limiter`
-- [ ] Create `apps/rate-limiter/` Fastify service directory (mirror `apps/api` structure)
-- [ ] Add `apps/rate-limiter/package.json` with pinned exact versions (Fastify, ioredis, zod, pino)
-- [ ] Add `apps/rate-limiter/tsconfig.json` extending root tsconfig
-- [ ] Add `apps/rate-limiter/src/env.ts` — Zod-validated env schema (port, internal token, Redis URL, cache TTL, check timeout)
-- [ ] Add RL-specific env vars to `packages/config` (`RATE_LIMITER_PORT`, `RATE_LIMITER_INTERNAL_TOKEN`, `RATE_LIMITER_REDIS_URL`, `RATE_LIMITER_RULE_CACHE_TTL`, `RATE_LIMITER_CHECK_TIMEOUT_MS`)
-- [ ] Update root `.env.example` with all new RL env vars and descriptions
-- [ ] Register `apps/rate-limiter` in root `turbo.json` pipeline
-- [ ] Add `@pulse/rate-limiter` to Turborepo workspace in root `pnpm-workspace.yaml`
-- [ ] Add `RateLimitRule` and `RateLimitEvent` types to `packages/types`
-- [ ] Set up TimescaleDB hypertable for `RateLimitEvent` (partition on `timestamp`) — add SQL to `timescale-setup.sql`
+- [x] Add `RateLimitRule` model to `packages/db/prisma/schema.prisma`
+- [x] Add `RateLimitEvent` model to `packages/db/prisma/schema.prisma` (TimescaleDB hypertable; composite PK `[id, timestamp]`)
+- [x] Run migration: `cd packages/db && npx prisma migrate dev --name add_rate_limiter`
+- [x] Create `apps/rate-limiter/` Fastify service directory (mirrors `apps/api` structure)
+- [x] Add `apps/rate-limiter/package.json` with pinned exact versions (Fastify, ioredis, zod, pino, bullmq, micromatch)
+- [x] Add `apps/rate-limiter/tsconfig.json` extending root tsconfig
+- [x] Add `apps/rate-limiter/src/env.ts` — Zod-validated env schema (port, internal token, Redis URL, cache TTL, check timeout)
+- [x] RL-specific env vars added to `apps/rate-limiter/src/env.ts` (no separate packages/config; follows existing pattern)
+- [x] Update root `.env.example` with all new RL env vars and descriptions
+- [x] `apps/rate-limiter` registered via existing `apps/*` workspace glob in root `package.json`; `turbo.json` global pipeline covers it
+- [x] Add `RateLimitRule`, `RateLimitEvent`, `CheckRequest`, `CheckResponse`, and related types to `packages/types/src/index.ts`
+- [x] Set up TimescaleDB hypertable for `RateLimitEvent` (partition on `timestamp`) — SQL added to `packages/db/prisma/timescale-setup.sql`
 
 ---
 
-## 📋 Phase RL-1 — Core Enforcement Service
+## ✅ Phase RL-1 — Core Enforcement Service (COMPLETE)
 
 > The hot path. p99 < 5ms. No DB reads on `/v1/check`. Build and test this before any UI work.
 
-### Redis Counter
-- [ ] Write unit tests for sliding window counter first (window boundary conditions — requests at exact start/end must not be double-counted or dropped)
-- [ ] `apps/rate-limiter/src/lib/counter.ts` — atomic `INCR + EXPIRE` sliding window; key schema `rl:{projectId}:{ruleId}:{keyValue}:{windowSlot}`
-- [ ] Test: `projectId` A cannot read or affect counters for `projectId` B (key isolation)
+### Redis Counter ✅
+- [x] Write unit tests for sliding window counter first (window boundary conditions — requests at exact start/end must not be double-counted or dropped)
+- [x] `apps/rate-limiter/src/lib/counter.ts` — atomic `INCR + EXPIREAT` pipeline; key schema `rl:{projectId}:{ruleId}:{keyValue}:{windowSlot}`
+- [x] Test: `projectId` A cannot read or affect counters for `projectId` B (key isolation)
 
-### Rule Cache
-- [ ] `apps/rate-limiter/src/lib/rule-cache.ts` — Redis cache for rules; key `rl:rules:{projectId}`; TTL 30s
-- [ ] Cache miss path: fetch from DB → populate cache → proceed (never fail on miss)
-- [ ] Test: rule updates propagate within 30s without a service restart
+### Rule Cache ✅
+- [x] `apps/rate-limiter/src/lib/rule-cache.ts` — Redis cache for rules; key `rl:rules:{projectId}`; TTL 30s
+- [x] Cache miss path: fetch from DB → populate cache → proceed (never fail on miss)
+- [x] Test: rule updates propagate within 30s without a service restart
 
-### Fastify Service Bootstrap
-- [ ] `apps/rate-limiter/src/server.ts` — Fastify instance with pino logger, content-type parser, auth middleware wiring
-- [ ] `apps/rate-limiter/src/plugins/redis.ts` — shared ioredis client (import `RATE_LIMITER_REDIS_URL` or fall back to `REDIS_URL`)
-- [ ] `apps/rate-limiter/src/plugins/prisma.ts` — import `@pulse/database` Prisma client (do NOT instantiate a new one)
-- [ ] `apps/rate-limiter/src/middleware/auth.ts` — validate `RATE_LIMITER_INTERNAL_TOKEN` on all `/v1/rules` and `/v1/analytics` routes; `/v1/check` uses project `apiKey` validation (reuse existing auth logic from `apps/api`)
+### Fastify Service Bootstrap ✅
+- [x] `apps/rate-limiter/src/server.ts` — Fastify instance with pino logger, auth middleware wiring, consistent error handler
+- [x] `apps/rate-limiter/src/plugins/redis.ts` — shared ioredis client (`RATE_LIMITER_REDIS_URL` or fall back to `REDIS_URL`)
+- [x] `apps/rate-limiter/src/plugins/prisma.ts` — re-exports `prisma` from `@pulse/db` (never instantiates a new one)
+- [x] `apps/rate-limiter/src/middleware/auth.ts` — `requireInternalToken` for `/v1/rules`; `resolveProject` (with Redis project cache) for `/v1/check`
 
-### `/v1/check` — Hot Path
-- [ ] `apps/rate-limiter/src/routes/check.ts` — `POST /v1/check` handler
-  - [ ] Validate request body with Zod (`projectId`, `apiKey`, `path`, `method`, `ip`, `headers`)
-  - [ ] Resolve active rules from Redis cache (cache miss → DB fetch → cache populate)
-  - [ ] Match `path` against `pathPattern` (glob matching)
-  - [ ] Extract `keyValue` from `limitKey` (`ip` | `apiKey` | `userId` | `global`); reject PII (no emails, passwords)
-  - [ ] Run atomic `INCR + EXPIRE` counter
-  - [ ] Return `{ allowed: true, rule: { id, limit, remaining, resetAt } }` or `{ allowed: false, ..., retryAfter }`
-  - [ ] Never read from DB on this path
-  - [ ] Abort and fail open if check exceeds `RATE_LIMITER_CHECK_TIMEOUT_MS` (default 10ms)
-  - [ ] Enqueue `RateLimitEvent` to BullMQ (async, never await on hot path)
-- [ ] Integration test: `POST /v1/check` with real Redis (use `ioredis-mock` for CI)
+### `/v1/check` — Hot Path ✅
+- [x] `apps/rate-limiter/src/routes/check.ts` — `POST /v1/check` handler
+  - [x] Validate request body with Zod
+  - [x] Resolve active rules from Redis cache (cache miss → DB fetch → cache populate)
+  - [x] Match `path` against `pathPattern` (micromatch glob)
+  - [x] Extract `keyValue` from `limitKey` (`ip` | `apiKey` | `userId` | `global`); apiKey stored as 32-char SHA-256 hash prefix (opaque, never raw key)
+  - [x] Run atomic `INCR + EXPIREAT` counter
+  - [x] Return `{ allowed: true|false, rule: { id, limit, remaining, resetAt } }` or `retryAfter`
+  - [x] DB not read on hot path (project cache + rules cache cover it)
+  - [x] Abort and fail open via `Promise.race` if check exceeds `RATE_LIMITER_CHECK_TIMEOUT_MS`
+  - [x] Enqueue `RateLimitEvent` to BullMQ (fire-and-forget, `.catch(() => null)`)
+- [x] Integration test: 12 tests covering all scenarios (ioredis-mock)
 
-### RFC 6585 Response Headers
-- [ ] Add `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` on every rate-limited response
-- [ ] Add `Retry-After` only on 429 responses
-- [ ] Test all headers are present and correct on blocked responses
+### RFC 6585 Response Headers ✅
+- [x] `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` on every rule-evaluated response
+- [x] `Retry-After` only on 429 responses
+- [x] Tests verify headers present/absent correctly
 
-### Rule Management Routes
-- [ ] `apps/rate-limiter/src/routes/rules.ts`
-  - [ ] `GET /v1/rules/:projectId` — fetch all rules for project (auth: internal token)
-  - [ ] `POST /v1/rules/:projectId` — create rule; reject 409 on duplicate `(projectId, pathPattern, limitKey)`
-  - [ ] `PATCH /v1/rules/:ruleId` — update rule fields; invalidate Redis cache for project
-  - [ ] `PUT /v1/rules/:ruleId/toggle` — flip `enabled`; invalidate Redis cache; propagates within 30s
-- [ ] Test: duplicate rule creation returns 409
-- [ ] Test: rule toggle invalidates cache and new rule state is active within 30s
+### Rule Management Routes ✅
+- [x] `apps/rate-limiter/src/routes/rules.ts`
+  - [x] `GET /v1/rules/:projectId` — all rules for project (auth: internal token)
+  - [x] `POST /v1/rules/:projectId` — create; rejects 409 on duplicate `(projectId, pathPattern, limitKey)`
+  - [x] `PATCH /v1/rules/:ruleId` — update fields; invalidates Redis cache immediately
+  - [x] `PUT /v1/rules/:ruleId/toggle` — flip `enabled`; invalidates Redis cache; propagates within 30s
+- [x] Test: duplicate rule creation returns 409
+- [x] Test: rule toggle invalidates cache and new rule state is active on next call
 
-### Error Handling & Logging
-- [ ] All errors follow `{ success: false, error: { code, message } }` format (never expose stack traces)
-- [ ] pino structured logging on all routes: `level`, `timestamp`, `service: 'rate-limiter'`, relevant context
-- [ ] Never log `keyValue` if it could be sensitive; never log secrets or tokens
+### Error Handling & Logging ✅
+- [x] All errors: `{ success: false, error: { code, message } }` — no stack traces exposed
+- [x] pino structured logging: `service: 'rate-limiter'` binding on all log lines
+- [x] `keyValue` never logged; secrets and tokens never logged
 
 ---
 

@@ -76,3 +76,18 @@ SELECT add_continuous_aggregate_policy('request_stats_daily',
 -- and by the < 1h fallback path in all analytics routes.
 CREATE INDEX IF NOT EXISTS "RequestLog_projectId_timestamp_idx"
   ON "RequestLog" ("projectId", timestamp DESC);
+
+-- ============================================================
+-- Rate Limiter: RateLimitEvent hypertable
+-- ============================================================
+-- Convert RateLimitEvent into a TimescaleDB hypertable partitioned
+-- on timestamp. The Prisma migration must have already created the
+-- "RateLimitEvent" table before running this.
+SELECT create_hypertable('"RateLimitEvent"', 'timestamp', if_not_exists => TRUE);
+
+-- Composite indexes for projectId + ruleId time-range scans
+-- (used by analytics routes and top-offender queries).
+CREATE INDEX IF NOT EXISTS "RateLimitEvent_projectId_timestamp_idx"
+  ON "RateLimitEvent" ("projectId", timestamp DESC);
+CREATE INDEX IF NOT EXISTS "RateLimitEvent_ruleId_timestamp_idx"
+  ON "RateLimitEvent" ("ruleId", timestamp DESC);
