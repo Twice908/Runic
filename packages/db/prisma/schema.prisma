@@ -17,24 +17,26 @@ model User {
 }
 
 model Project {
-  id           String        @id @default(cuid())
-  name         String
-  apiKeyHash   String        @unique
-  apiKeyPrefix String
-  userId       String
-  user         User          @relation(fields: [userId], references: [id])
-  logs         RequestLog[]
-  errors       ErrorEvent[]
-  checks       UptimeCheck[]
-  alerts       Alert[]
-  alertEvents  AlertEvent[]
-  createdAt    DateTime      @default(now())
+  id               String           @id @default(cuid())
+  name             String
+  apiKeyHash       String           @unique
+  apiKeyPrefix     String
+  userId           String
+  user             User             @relation(fields: [userId], references: [id])
+  logs             RequestLog[]
+  errors           ErrorEvent[]
+  checks           UptimeCheck[]
+  alerts           Alert[]
+  alertEvents      AlertEvent[]
+  rateLimitRules   RateLimitRule[]
+  rateLimitEvents  RateLimitEvent[]
+  createdAt        DateTime         @default(now())
 }
 
 model RequestLog {
   id           String   @default(cuid())
   projectId    String
-  project      Project  @relation(fields: [projectId], references: [id])
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   method       String
   route        String
   statusCode   Int
@@ -47,16 +49,18 @@ model RequestLog {
 }
 
 model ErrorEvent {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   projectId   String
-  project     Project  @relation(fields: [projectId], references: [id])
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   message     String
   stack       String?
   route       String
   statusCode  Int
-  count       Int      @default(1)
+  count       Int       @default(1)
   firstSeen   DateTime
   lastSeen    DateTime
+  resolved    Boolean   @default(false)
+  resolvedAt  DateTime?
 
   @@unique([projectId, route, statusCode])
 }
@@ -64,7 +68,7 @@ model ErrorEvent {
 model UptimeCheck {
   id           String   @id @default(cuid())
   projectId    String
-  project      Project  @relation(fields: [projectId], references: [id])
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   url          String
   status       String
   responseTime Int?
@@ -74,7 +78,7 @@ model UptimeCheck {
 model Alert {
   id          String       @id @default(cuid())
   projectId   String
-  project     Project      @relation(fields: [projectId], references: [id])
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   type        String       // "uptime" | "error_rate" | "response_time"
   threshold   Float
   channel     String       // "email" | "slack"
@@ -106,4 +110,40 @@ enum Plan {
   STARTER
   PRO
   ENTERPRISE
+}
+
+model RateLimitRule {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String
+  pathPattern    String
+  limitKey       String
+  limitKeyHeader String?
+  limitCount     Int
+  windowSecs     Int
+  action         String
+  priority       Int      @default(0)
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([projectId, enabled])
+}
+
+model RateLimitEvent {
+  id        String   @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ruleId    String
+  limitKey  String
+  path      String
+  action    String
+  timestamp DateTime @default(now())
+
+  // Composite PK required by TimescaleDB: every unique index must include
+  // the partition column (timestamp). A plain @id on `id` alone would fail.
+  @@id([id, timestamp])
+  @@index([projectId, timestamp])
+  @@index([ruleId, timestamp])
 }

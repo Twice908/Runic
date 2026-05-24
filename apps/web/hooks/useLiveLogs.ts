@@ -6,11 +6,19 @@ import type { RequestLogRow } from '@pulse/types'
 const POLL_INTERVAL_MS = 3_000
 const MAX_LOG_BUFFER = 500
 
-export function useLiveLogs(projectId: string, statusCategory: string) {
+export interface LiveLogsFilter {
+  statusCategory?: string
+  method?: string
+  search?: string
+}
+
+export function useLiveLogs(projectId: string, filter: LiveLogsFilter = {}) {
   const [logs, setLogs] = useState<RequestLogRow[]>([])
   const [isPolling, setIsPolling] = useState(false)
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set())
   const lastTimestampRef = useRef<string | null>(null)
+
+  const { statusCategory = 'all', method = 'ALL', search = '' } = filter
 
   const fetchNewLogs = useCallback(async (signal: AbortSignal) => {
     if (document.visibilityState === 'hidden') return
@@ -18,6 +26,8 @@ export function useLiveLogs(projectId: string, statusCategory: string) {
     const params = new URLSearchParams()
     if (lastTimestampRef.current) params.set('since', lastTimestampRef.current)
     if (statusCategory !== 'all') params.set('statusCategory', statusCategory)
+    if (method !== 'ALL') params.set('method', method)
+    if (search) params.set('search', search)
 
     try {
       const res = await fetch(`/api/projects/${projectId}/logs?${params.toString()}`, { signal })
@@ -40,9 +50,8 @@ export function useLiveLogs(projectId: string, statusCategory: string) {
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
-      // Other polling failures are silent — live feed should never crash the UI
     }
-  }, [projectId, statusCategory])
+  }, [projectId, statusCategory, method, search])
 
   useEffect(() => {
     const controller = new AbortController()

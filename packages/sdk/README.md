@@ -99,6 +99,70 @@ pulse({ apiKey: 'pk_live_...', host: 'https://your-pulse-api.com' })
 
 ---
 
+## Rate Limiting
+
+Protect your API routes with a single line. Rules are managed in the Pulse dashboard and go live within 30 seconds — no redeploy needed.
+
+### Express
+
+```js
+import { pulse, rateLimit } from '@pulse/node'
+
+app.use(pulse({ apiKey: 'pk_live_...' }))
+app.use(rateLimit({ rules: 'auto' }))
+```
+
+### Fastify
+
+```js
+import { pulsePlugin, rateLimitPlugin } from '@pulse/node'
+
+await fastify.register(pulsePlugin, { apiKey: 'pk_live_...' })
+await fastify.register(rateLimitPlugin, { rules: 'auto' })
+```
+
+### Manual rules (local dev)
+
+When `RATE_LIMITER_URL` is not set, the middleware allows all traffic silently — safe for local development. To test rate limiting locally, pass rules directly:
+
+```js
+app.use(rateLimit({
+  rules: [{ path: '/api/login', limit: 5, window: '1m', key: 'ip' }]
+}))
+```
+
+### Environment variables (required for `rules: 'auto'`)
+
+```
+# Rate-limiter service URL
+RATE_LIMITER_URL=http://localhost:3002          # dev
+RATE_LIMITER_URL=https://rate-limiter.example.com  # prod
+
+# Your Pulse project ID (from the dashboard)
+PULSE_PROJECT_ID=proj_xxx
+
+# Your Pulse project API key
+PULSE_API_KEY=pk_live_xxx
+
+# Internal token for fetching rules (from the dashboard → Settings)
+RATE_LIMITER_INTERNAL_TOKEN=your_internal_token
+```
+
+### `rateLimit` options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `rules` | `'auto' \| RateLimitRule[]` | **required** | `'auto'` fetches rules from Pulse; pass an array to override |
+| `failOpen` | `boolean` | `true` | If `true`, allows traffic when Pulse is unreachable. **Never set to `false` in production.** |
+| `onLimited` | `(ctx) => void` | — | Called when a request is rate-limited, before the 429 is sent |
+| `headerPrefix` | `string` | `'X-RateLimit'` | Prefix for RFC 6585 response headers |
+
+### Fail-open guarantee
+
+If the Pulse rate-limiter service is unreachable, times out (>10ms), or returns a 5xx error, the middleware **always allows the request through** when `failOpen: true` (the default). Your app is never affected by a Pulse outage.
+
+---
+
 ## What data is collected
 
 **Collected for every request:**

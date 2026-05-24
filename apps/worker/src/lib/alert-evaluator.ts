@@ -5,16 +5,35 @@ import { dispatch } from './notifications'
 
 const logger = pino({ name: 'alert-evaluator' })
 
-const DEBOUNCE_TTL_SECONDS = 300
+const DEBOUNCE_TTL: Record<string, number> = {
+  uptime: 300,
+  error_rate: 600,
+  response_time: 600,
+  rate_limit_spike: 300,
+}
 const ERROR_RATE_WINDOW_MS = 5 * 60 * 1000
 const RESPONSE_TIME_WINDOW_MS = 5 * 60 * 1000
+const RATE_LIMIT_SPIKE_WINDOW_MS = 5 * 60 * 1000
 
-export async function evaluateAlerts(projectId: string): Promise<void> {
+export async function evaluateObserveAlerts(projectId: string): Promise<void> {
   const project = await prisma.project.findUnique({ where: { id: projectId } })
   if (!project) return
 
   const alerts = await prisma.alert.findMany({
-    where: { projectId, active: true },
+    where: { projectId, active: true, type: { in: ['error_rate', 'response_time'] } },
+  })
+
+  await Promise.all(
+    alerts.map((alert) => evaluateSingleAlert(alert, project.name)),
+  )
+}
+
+export async function evaluateUptimeAlerts(projectId: string): Promise<void> {
+  const project = await prisma.project.findUnique({ where: { id: projectId } })
+  if (!project) return
+
+  const alerts = await prisma.alert.findMany({
+    where: { projectId, active: true, type: 'uptime' },
   })
 
   await Promise.all(
@@ -33,6 +52,8 @@ async function evaluateSingleAlert(
       await evaluateErrorRate(alert, projectName)
     } else if (alert.type === 'response_time') {
       await evaluateResponseTime(alert, projectName)
+    } else if (alert.type === 'rate_limit_spike') {
+      await evaluateRateLimitSpikeAlert(alert, projectName)
     }
   } catch (err) {
     logger.error({ alertId: alert.id, err }, 'Error evaluating alert')
@@ -48,19 +69,36 @@ async function evaluateUptime(
     orderBy: { checkedAt: 'desc' },
   })
 
-  if (!lastCheck || lastCheck.status !== 'down') return
+  const currentStatus: 'up' | 'down' = lastCheck?.status === 'down' ? 'down' : 'up'
+  const stateKey = `alert:uptime:state:${alert.id}`
+  const lastState = await redis.get(stateKey)
 
-  await fireAlert({
-    alertId: alert.id,
-    projectId: alert.projectId,
-    projectName,
-    alertType: 'uptime',
-    channel: alert.channel as 'email' | 'slack',
-    destination: alert.destination,
-    triggeredValue: 0,
-    threshold: 1,
-    message: `Uptime check is DOWN. Last checked at ${lastCheck.checkedAt.toISOString()}.`,
-  })
+  // Always record current state so the next evaluation sees the transition correctly
+  await redis.set(stateKey, currentStatus, 'EX', 3600)
+
+  if (currentStatus === 'down' && (lastState === 'up' || lastState === null)) {
+    // Transition up → down (or first-ever check that finds down): fire alert
+    await fireAlert({
+      alertId: alert.id,
+      projectId: alert.projectId,
+      projectName,
+      alertType: 'uptime',
+      channel: alert.channel as 'email' | 'slack',
+      destination: alert.destination,
+      triggeredValue: 0,
+      threshold: 1,
+      message: `Uptime check is DOWN. Last checked at ${lastCheck!.checkedAt.toISOString()}.`,
+    })
+  } else if (currentStatus === 'up' && lastState === 'down') {
+    // Recovery: clear the debounce key so the next outage fires a fresh alert
+    const debounceKey = `alert:debounce:${alert.id}`
+    try {
+      await redis.del(debounceKey)
+    } catch (err) {
+      logger.warn({ debounceKey, err }, 'Failed to clear debounce key on uptime recovery')
+    }
+    logger.info({ alertId: alert.id }, 'Uptime recovered — debounce key cleared')
+  }
 }
 
 async function evaluateErrorRate(
@@ -127,8 +165,80 @@ async function evaluateResponseTime(
   })
 }
 
+// ── Rate Limiter alert evaluation ─────────────────────────────────────────────
+
+/**
+ * Entry point called by the rate-limit-event processor after each batch write.
+ * Only evaluates rate_limit_spike alerts — never re-evaluates Observe alert types.
+ */
+export async function evaluateRateLimitAlerts(projectId: string): Promise<void> {
+  const lockKey = `rl:eval:lock:${projectId}`
+  const lock = await redis.set(lockKey, '1', 'NX', 'EX', 5)
+  if (!lock) {
+    logger.debug({ projectId }, 'Rate limit evaluation already running — skipping')
+    return
+  }
+
+  try {
+    const project = await prisma.project.findUnique({ where: { id: projectId } })
+    if (!project) return
+
+    const alerts = await prisma.alert.findMany({
+      where: { projectId, active: true, type: 'rate_limit_spike' },
+    })
+
+    logger.debug({ projectId, alertCount: alerts.length }, 'Rate limit alerts to evaluate')
+
+    await Promise.all(
+      alerts.map((alert) => evaluateSingleAlert(alert, project.name)),
+    )
+  } finally {
+    await redis.del(lockKey)
+  }
+}
+
+async function evaluateRateLimitSpikeAlert(
+  alert: { id: string; projectId: string; threshold: number; channel: string; destination: string },
+  projectName: string,
+): Promise<void> {
+  await evaluateBlockSpike(alert, projectName)
+}
+
+async function evaluateBlockSpike(
+  alert: { id: string; projectId: string; threshold: number; channel: string; destination: string },
+  projectName: string,
+): Promise<void> {
+  const since = new Date(Date.now() - RATE_LIMIT_SPIKE_WINDOW_MS)
+
+  const rows = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*)::bigint AS count
+    FROM "RateLimitEvent"
+    WHERE "projectId" = ${alert.projectId}
+      AND action = 'blocked'
+      AND timestamp >= ${since}
+  `
+
+  const blockCount = Number(rows[0]?.count ?? 0)
+  logger.debug({ projectId: alert.projectId, blockCount, threshold: alert.threshold }, 'Block spike check')
+  if (blockCount <= alert.threshold) return
+
+  await fireAlert({
+    alertId: alert.id,
+    debounceId: `${alert.id}:spike`,
+    projectId: alert.projectId,
+    projectName,
+    alertType: 'rate_limit_spike',
+    channel: alert.channel as 'email' | 'slack',
+    destination: alert.destination,
+    triggeredValue: blockCount,
+    threshold: alert.threshold,
+    message: `Rate limit spike: ${blockCount} requests blocked in the last 5 minutes (threshold: ${alert.threshold}).`,
+  })
+}
+
 async function fireAlert(params: {
-  alertId: string
+  alertId: string      // real Alert.id — used for DB FK write in dispatch()
+  debounceId?: string  // optional override for the Redis debounce key (use when alertId is composite)
   projectId: string
   projectName: string
   alertType: string
@@ -138,14 +248,13 @@ async function fireAlert(params: {
   threshold: number
   message: string
 }): Promise<void> {
-  const debounceKey = `alert:debounce:${params.alertId}`
-  const alreadyFired = await redis.get(debounceKey)
-  if (alreadyFired) {
+  const debounceKey = `alert:debounce:${params.debounceId ?? params.alertId}`
+  const ttl = DEBOUNCE_TTL[params.alertType] ?? 600
+  const acquired = await redis.set(debounceKey, '1', 'EX', ttl, 'NX')
+  if (!acquired) {
     logger.debug({ alertId: params.alertId }, 'Alert debounced — skipping')
     return
   }
-
   await dispatch(params)
-  await redis.set(debounceKey, '1', 'EX', DEBOUNCE_TTL_SECONDS)
   logger.info({ alertId: params.alertId, type: params.alertType }, 'Alert fired')
 }

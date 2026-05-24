@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation'
 import StatsCards from '@/components/StatsCards'
 import LogTable from '@/components/LogTable'
 import CreateProjectModal from '@/components/CreateProjectModal'
-import RegenerateKeyModal from '@/components/RegenerateKeyModal'
 import { apiFetch } from '@/lib/api'
 import type { ProjectSummary } from '@pulse/types'
 
@@ -15,7 +14,6 @@ export default function DashboardPage() {
 
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [showModal, setShowModal] = useState(false)
-  const [showRegenerateModal, setShowRegenerateModal] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -69,23 +67,12 @@ export default function DashboardPage() {
     <div className="max-w-7xl mx-auto p-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-xl font-semibold text-gray-900">Overview</h1>
-        <div className="flex items-center gap-2">
-          {activeProjectId && (
-            <button
-              onClick={() => setShowRegenerateModal(true)}
-              className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-2 text-sm font-medium text-yellow-800 hover:bg-yellow-100 transition-colors duration-150"
-              title="DEV ONLY"
-            >
-              Regenerate & Show API Key
-            </button>
-          )}
-          <button
-            onClick={() => setShowModal(true)}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
-          >
-            New project
-          </button>
-        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+        >
+          New project
+        </button>
       </div>
 
       {activeProjectId && (
@@ -96,12 +83,6 @@ export default function DashboardPage() {
       )}
 
       {showModal && <CreateProjectModal onClose={() => setShowModal(false)} />}
-      {showRegenerateModal && activeProjectId && (
-        <RegenerateKeyModal
-          projectId={activeProjectId}
-          onClose={() => setShowRegenerateModal(false)}
-        />
-      )}
     </div>
   )
 }

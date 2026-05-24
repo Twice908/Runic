@@ -2,8 +2,9 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@pulse/db'
 import { verifyClerkJwt } from '../lib/auth'
+import { env } from '../env'
 
-const ALERT_TYPES = ['uptime', 'error_rate', 'response_time'] as const
+const ALERT_TYPES = ['uptime', 'error_rate', 'response_time', 'rate_limit_spike'] as const
 const ALERT_CHANNELS = ['email', 'slack'] as const
 
 const createAlertSchema = z
@@ -32,6 +33,7 @@ const patchAlertSchema = z.object({
   active: z.boolean().optional(),
   threshold: z.number().min(0).optional(),
   destination: z.string().min(1).optional(),
+  url: z.string().url().optional(),
 })
 
 const PAGE_SIZE = 20
@@ -215,6 +217,76 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
       page,
       hasMore: page * limit < total,
     })
+  })
+
+  // ── POST /projects/:projectId/alerts/:alertId/test ───────────────────────
+  app.post('/projects/:projectId/alerts/:alertId/test', async (request, reply) => {
+    const clerkId = await verifyClerkJwt(request.headers.authorization, reply)
+    if (!clerkId) return
+
+    const { projectId, alertId } = request.params as { projectId: string; alertId: string }
+    const project = await getOwnedProject(clerkId, projectId)
+    if (!project) return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } })
+
+    const alert = await prisma.alert.findFirst({ where: { id: alertId, projectId } })
+    if (!alert) return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Alert not found' } })
+
+    try {
+      if (alert.channel === 'email') {
+        if (!env.RESEND_API_KEY) {
+          return reply.status(502).send({
+            success: false,
+            error: { code: 'CHANNEL_ERROR', message: 'RESEND_API_KEY is not configured on this server' },
+          })
+        }
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: env.RESEND_FROM_EMAIL,
+            to: alert.destination,
+            subject: 'Test alert from Pulse',
+            html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px"><h2>Test Notification</h2><p>This is a test notification. Your alert channel is configured correctly.</p><p style="color:#6b7280;font-size:14px">Alert type: ${alert.type} · Project: ${projectId}</p></div>`,
+          }),
+        })
+        if (!res.ok) {
+          const body = (await res.json()) as { message?: string }
+          return reply.status(502).send({
+            success: false,
+            error: { code: 'CHANNEL_ERROR', message: body.message ?? `Resend returned ${res.status}` },
+          })
+        }
+      } else if (alert.channel === 'slack') {
+        const res = await fetch(alert.destination, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            blocks: [
+              { type: 'header', text: { type: 'plain_text', text: 'Test alert from Pulse' } },
+              { type: 'section', text: { type: 'mrkdwn', text: 'This is a test notification. Your alert channel is configured correctly.' } },
+              { type: 'context', elements: [{ type: 'mrkdwn', text: `Alert type: ${alert.type} · Project: ${projectId}` }] },
+            ],
+          }),
+        })
+        if (!res.ok) {
+          return reply.status(502).send({
+            success: false,
+            error: { code: 'CHANNEL_ERROR', message: `Slack webhook returned ${res.status}` },
+          })
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Delivery failed'
+      return reply.status(502).send({
+        success: false,
+        error: { code: 'CHANNEL_ERROR', message },
+      })
+    }
+
+    return reply.send({ success: true })
   })
 
   // ── GET /projects/:projectId/uptime ──────────────────────────────────────

@@ -27,18 +27,24 @@ export default function ErrorRateChart({ data, range, isLoading }: ErrorRateChar
   if (isLoading) {
     return <div className="h-[300px] animate-pulse rounded-xl bg-gray-100" />
   }
-  if (data.length === 0) {
-    return (
-      <div className="flex h-[300px] items-center justify-center rounded-xl border border-dashed border-gray-200 text-sm text-gray-400">
-        No data for this time range
-      </div>
-    )
-  }
 
-  const chartData = data.map((d) => ({
-    bucket: formatLabel(d.bucket, range),
-    errorRate: d.count > 0 ? parseFloat(((d.errorCount / d.count) * 100).toFixed(2)) : 0,
-  }))
+  const rangeStartMs = range === '7d'
+    ? Date.now() - 7 * 24 * 60 * 60 * 1000
+    : Date.now() - 24 * 60 * 60 * 1000
+
+  const chartData = (() => {
+    const mapped = data.map((d) => ({
+      bucket: formatLabel(d.bucket, range),
+      errorRate: d.count > 0 ? parseFloat(((d.errorCount / d.count) * 100).toFixed(2)) : 0,
+    }))
+    if (mapped.length < 2) {
+      mapped.unshift({
+        bucket: formatLabel(new Date(rangeStartMs).toISOString(), range),
+        errorRate: 0,
+      })
+    }
+    return mapped
+  })()
 
   return (
     <ResponsiveContainer width="100%" height={300}>

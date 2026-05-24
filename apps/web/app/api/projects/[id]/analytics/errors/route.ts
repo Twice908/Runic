@@ -13,8 +13,10 @@ export async function GET(
   if (!token) return NextResponse.json({ error: 'No session token' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
-  return proxyToApi(
+  const response = await proxyToApi(
     `/projects/${params.id}/analytics/errors?${searchParams.toString()}`,
     token,
   )
+  console.log(`[analytics/errors] proxy status: ${response.status}`)
+  return response
 }

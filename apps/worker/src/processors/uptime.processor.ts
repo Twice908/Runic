@@ -1,6 +1,6 @@
 import pino from 'pino'
 import { prisma } from '@pulse/db'
-import { evaluateAlerts } from '../lib/alert-evaluator'
+import { evaluateUptimeAlerts } from '../lib/alert-evaluator'
 
 const logger = pino({ name: 'uptime-processor' })
 
@@ -8,7 +8,12 @@ const REQUEST_TIMEOUT_MS = 10_000
 
 export async function processUptimeCheck(): Promise<void> {
   const alerts = await prisma.alert.findMany({
-    where: { type: 'uptime', active: true, url: { not: null } },
+    where: {
+      type: 'uptime',
+      active: true,
+      url: { not: null },
+      project: { id: { not: undefined } },
+    },
     select: { id: true, projectId: true, url: true },
   })
 
@@ -18,6 +23,15 @@ export async function processUptimeCheck(): Promise<void> {
 }
 
 async function pingAndRecord(projectId: string, url: string): Promise<void> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true },
+  })
+  if (!project) {
+    logger.warn({ projectId, url }, 'Skipping uptime ping — project no longer exists')
+    return
+  }
+
   const start = Date.now()
   let status: 'up' | 'down' = 'down'
   let responseTime: number | null = null
@@ -28,7 +42,7 @@ async function pingAndRecord(projectId: string, url: string): Promise<void> {
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
     try {
-      const res = await fetch(url, { method: 'GET', signal: controller.signal })
+      const res = await fetch(url, { method: 'GET', signal: controller.signal, headers: { 'X-Pulse-Skip-Log': 'true' } })
       clearTimeout(timer)
       responseTime = Date.now() - start
       httpStatusCode = res.status
@@ -53,5 +67,5 @@ async function pingAndRecord(projectId: string, url: string): Promise<void> {
 
   logger.debug({ projectId, url, status, responseTime, httpStatusCode }, 'Uptime check recorded')
 
-  await evaluateAlerts(projectId)
+  await evaluateUptimeAlerts(projectId)
 }

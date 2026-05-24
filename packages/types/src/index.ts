@@ -1,6 +1,6 @@
 export type PlanType = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE'
 
-export type AlertType = 'error_rate' | 'response_time' | 'uptime'
+export type AlertType = 'error_rate' | 'response_time' | 'uptime' | 'rate_limit_spike'
 
 export type AlertChannel = 'email' | 'slack'
 
@@ -10,6 +10,7 @@ export interface IngestEvent {
   statusCode: number
   responseTime: number
   timestamp: string
+  stack?: string
 }
 
 export interface IngestPayload {
@@ -114,6 +115,8 @@ export interface ErrorGroup {
   firstSeen: string
   lastSeen: string
   stack?: string
+  resolved: boolean
+  resolvedAt?: string | null
 }
 
 export interface AlertRule {
@@ -151,4 +154,90 @@ export interface UptimeStatus {
   uptimePercent24h: number
   avgResponseTime24h: number
   checks: UptimeCheck[]
+}
+
+// ─── Rate Limiter ─────────────────────────────────────────────────────────────
+
+export type RateLimitKeyType = 'ip' | 'apiKey' | 'userId' | 'global'
+
+export type RateLimitAction = 'block' | 'log_only'
+
+export type RateLimitEventAction = 'blocked' | 'logged'
+
+export interface RateLimitRuleRecord {
+  id: string
+  projectId: string
+  name: string
+  pathPattern: string
+  limitKey: RateLimitKeyType
+  limitKeyHeader?: string | null
+  limitCount: number
+  windowSecs: number
+  action: RateLimitAction
+  priority: number
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RateLimitEventRecord {
+  id: string
+  projectId: string
+  ruleId: string
+  limitKey: string
+  path: string
+  action: RateLimitEventAction
+  timestamp: string
+}
+
+export interface CheckRequest {
+  projectId: string
+  apiKey: string
+  path: string
+  method: string
+  ip: string
+  headers: Record<string, string>
+}
+
+export interface RateLimitMeta {
+  id: string
+  limit: number
+  remaining: number
+  resetAt: number
+}
+
+export interface CheckResponseAllowed {
+  allowed: true
+  rule: RateLimitMeta
+}
+
+export interface CheckResponseDenied {
+  allowed: false
+  rule: RateLimitMeta
+  retryAfter: number
+}
+
+export type CheckResponse = CheckResponseAllowed | CheckResponseDenied
+
+export interface CreateRateLimitRuleBody {
+  name: string
+  pathPattern: string
+  limitKey: RateLimitKeyType
+  limitKeyHeader?: string
+  limitCount: number
+  windowSecs: number
+  action: RateLimitAction
+  priority?: number
+}
+
+export interface UpdateRateLimitRuleBody {
+  name?: string
+  pathPattern?: string
+  limitKey?: RateLimitKeyType
+  limitKeyHeader?: string | null
+  limitCount?: number
+  windowSecs?: number
+  action?: RateLimitAction
+  priority?: number
+  enabled?: boolean
 }
