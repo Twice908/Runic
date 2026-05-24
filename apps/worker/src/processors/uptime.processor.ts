@@ -8,7 +8,12 @@ const REQUEST_TIMEOUT_MS = 10_000
 
 export async function processUptimeCheck(): Promise<void> {
   const alerts = await prisma.alert.findMany({
-    where: { type: 'uptime', active: true, url: { not: null } },
+    where: {
+      type: 'uptime',
+      active: true,
+      url: { not: null },
+      project: { id: { not: undefined } },
+    },
     select: { id: true, projectId: true, url: true },
   })
 
@@ -18,6 +23,15 @@ export async function processUptimeCheck(): Promise<void> {
 }
 
 async function pingAndRecord(projectId: string, url: string): Promise<void> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true },
+  })
+  if (!project) {
+    logger.warn({ projectId, url }, 'Skipping uptime ping — project no longer exists')
+    return
+  }
+
   const start = Date.now()
   let status: 'up' | 'down' = 'down'
   let responseTime: number | null = null
