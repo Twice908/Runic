@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   BarChart,
@@ -13,7 +13,7 @@ import {
 } from 'recharts'
 import { useUptime } from '@/hooks/useUptime'
 import { useAlerts } from '@/hooks/useAlerts'
-import type { UptimeCheck } from '@pulse/types'
+import type { UptimeCheck, AlertRule, AlertChannel } from '@pulse/types'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -63,16 +63,17 @@ function StatusDot({ status }: { status: 'up' | 'down' }) {
 
 interface UptimeCardProps {
   projectId: string
-  url: string
+  alert: AlertRule
+  onDisable: (alertId: string) => void
+  onEdit: (alert: AlertRule) => void
+  disabling: string | null
 }
 
-function UptimeCard({ projectId, url }: UptimeCardProps) {
+function UptimeCard({ projectId, alert, onDisable, onEdit, disabling }: UptimeCardProps) {
   const { data, isLoading, error } = useUptime(projectId)
   const hourly = bucketByHour(data.checks)
 
-  if (isLoading) {
-    return <div className="h-48 rounded-xl bg-gray-100 animate-pulse" />
-  }
+  if (isLoading) return <div className="h-48 rounded-xl bg-gray-100 animate-pulse" />
 
   if (error) {
     return (
@@ -88,15 +89,30 @@ function UptimeCard({ projectId, url }: UptimeCardProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <StatusDot status={data.current} />
-          <span className="text-sm font-medium text-gray-900 truncate">{url}</span>
+          <span className="text-sm font-medium text-gray-900 truncate">{alert.url}</span>
         </div>
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-            data.current === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-          }`}
-        >
-          {data.current.toUpperCase()}
-        </span>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              data.current === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}
+          >
+            {data.current.toUpperCase()}
+          </span>
+          <button
+            onClick={() => onEdit(alert)}
+            className="text-xs text-gray-400 hover:text-indigo-600 transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => onDisable(alert.id)}
+            disabled={disabling === alert.id}
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+          >
+            {disabling === alert.id ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
       </div>
 
       {/* Metrics */}
@@ -121,19 +137,148 @@ function UptimeCard({ projectId, url }: UptimeCardProps) {
             <BarChart data={hourly} barSize={6} barCategoryGap="20%">
               <XAxis dataKey="hour" tick={false} axisLine={false} tickLine={false} />
               <YAxis hide />
-              <Tooltip
+                      <Tooltip
                 formatter={(value, name) => [value, name === 'upCount' ? 'Up checks' : 'Down checks']}
                 contentStyle={{ fontSize: 12 }}
               />
-              <Bar dataKey="upCount" stackId="a">
-                {hourly.map((entry, i) => (
-                  <Cell key={i} fill={entry.downCount > 0 ? '#ef4444' : '#22c55e'} />
-                ))}
-              </Bar>
+              <Bar dataKey="upCount" stackId="a" fill="#22c55e" />
+              <Bar dataKey="downCount" stackId="a" fill="#ef4444" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── add / edit form ───────────────────────────────────────────────────────────
+
+interface UptimeFormProps {
+  projectId: string
+  initial?: AlertRule
+  onSaved: () => void
+  onCancel: () => void
+}
+
+function UptimeForm({ projectId, initial, onSaved, onCancel }: UptimeFormProps) {
+  const [url, setUrl] = useState(initial?.url ?? '')
+  const [channel, setChannel] = useState<AlertChannel>(initial?.channel ?? 'email')
+  const [destination, setDestination] = useState(initial?.destination ?? '')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSubmitting(true)
+    try {
+      let res: Response
+      if (initial) {
+        res = await fetch(`/api/projects/${projectId}/alerts/${initial.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, destination }),
+        })
+      } else {
+        res = await fetch(`/api/projects/${projectId}/alerts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'uptime', channel, destination, threshold: 0, url }),
+        })
+      }
+      if (!res.ok) {
+        const json = (await res.json()) as { error?: { message?: string } }
+        throw new Error(json.error?.message ?? `HTTP ${res.status}`)
+      }
+      onSaved()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const INPUT = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+
+  return (
+    <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-6 space-y-4">
+      <h3 className="text-sm font-semibold text-gray-800">{initial ? 'Edit monitor' : 'Add URL to monitor'}</h3>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">URL</label>
+          <input
+            type="url"
+            placeholder="https://api.example.com/health"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            required
+            className={INPUT}
+          />
+        </div>
+
+        {!initial && (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Notification channel</label>
+              <div className="flex gap-2">
+                {(['email', 'slack'] as AlertChannel[]).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => { setChannel(c); setDestination('') }}
+                    className={[
+                      'rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
+                      channel === c ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-indigo-300',
+                    ].join(' ')}
+                  >
+                    {c === 'email' ? 'Email' : 'Slack'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {channel === 'email' ? 'Email address' : 'Slack webhook URL'}
+              </label>
+              <input
+                type={channel === 'email' ? 'email' : 'url'}
+                placeholder={channel === 'email' ? 'you@example.com' : 'https://hooks.slack.com/services/...'}
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                required
+                className={INPUT}
+              />
+            </div>
+          </>
+        )}
+
+        {initial && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Notification destination</label>
+            <input
+              type="text"
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
+              className={INPUT}
+            />
+          </div>
+        )}
+
+        {error && <p className="text-xs text-red-600">{error}</p>}
+
+        <div className="flex justify-between">
+          <button type="button" onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-700">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-40"
+          >
+            {submitting ? 'Saving…' : initial ? 'Save Changes' : 'Add Monitor'}
+          </button>
+        </div>
+      </form>
     </div>
   )
 }
@@ -144,8 +289,29 @@ export default function UptimePage() {
   const searchParams = useSearchParams()
   const projectId = searchParams.get('project') ?? ''
 
-  const { data: alerts, isLoading } = useAlerts(projectId)
-  const uptimeAlerts = alerts.filter((a) => a.type === 'uptime' && a.url)
+  const { data: alerts, isLoading, refetch } = useAlerts(projectId)
+  const uptimeAlerts = alerts.filter((a) => a.type === 'uptime' && a.url && a.active)
+
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingAlert, setEditingAlert] = useState<AlertRule | null>(null)
+  const [disabling, setDisabling] = useState<string | null>(null)
+
+  async function handleDisable(alertId: string) {
+    setDisabling(alertId)
+    await fetch(`/api/projects/${projectId}/alerts/${alertId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: false }),
+    })
+    setDisabling(null)
+    refetch()
+  }
+
+  function handleSaved() {
+    setShowAddForm(false)
+    setEditingAlert(null)
+    refetch()
+  }
 
   if (!projectId) {
     return (
@@ -162,7 +328,32 @@ export default function UptimePage() {
           <h1 className="text-xl font-semibold text-gray-900">Uptime</h1>
           <p className="text-sm text-gray-500 mt-0.5">HTTP uptime checks run every 60 seconds</p>
         </div>
+        {!showAddForm && !editingAlert && (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            + Add URL to monitor
+          </button>
+        )}
       </div>
+
+      {showAddForm && (
+        <UptimeForm
+          projectId={projectId}
+          onSaved={handleSaved}
+          onCancel={() => setShowAddForm(false)}
+        />
+      )}
+
+      {editingAlert && (
+        <UptimeForm
+          projectId={projectId}
+          initial={editingAlert}
+          onSaved={handleSaved}
+          onCancel={() => setEditingAlert(null)}
+        />
+      )}
 
       {isLoading ? (
         <div className="space-y-4">
@@ -174,20 +365,20 @@ export default function UptimePage() {
         <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-14 text-center">
           <p className="text-sm font-medium text-gray-500">No uptime monitors configured</p>
           <p className="text-xs text-gray-400 mt-1">
-            Go to{' '}
-            <Link
-              href={`/dashboard/alerts?project=${projectId}`}
-              className="text-indigo-500 underline"
-            >
-              Alerts
-            </Link>{' '}
-            to add an uptime monitor
+            Click "Add URL to monitor" above to get started.
           </p>
         </div>
       ) : (
         <div className="space-y-5">
           {uptimeAlerts.map((alert) => (
-            <UptimeCard key={alert.id} projectId={projectId} url={alert.url!} />
+            <UptimeCard
+              key={alert.id}
+              projectId={projectId}
+              alert={alert}
+              onDisable={handleDisable}
+              onEdit={setEditingAlert}
+              disabling={disabling}
+            />
           ))}
         </div>
       )}

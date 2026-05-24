@@ -9,6 +9,7 @@ interface PollResult<T> {
   data: T
   isLoading: boolean
   error: string | null
+  refetch: () => void
 }
 
 function usePollData<T>(url: string | null, empty: T): PollResult<T> {
@@ -45,7 +46,7 @@ function usePollData<T>(url: string | null, empty: T): PollResult<T> {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchData, url])
 
-  return { data, isLoading, error }
+  return { data, isLoading, error, refetch: fetchData }
 }
 
 export function useVolumeData(projectId: string, range: string) {
@@ -64,7 +65,7 @@ export function useTopRoutes(projectId: string, range: string) {
   return usePollData<TopRoute[]>(url, [])
 }
 
-export function useErrorList(projectId: string, range: string) {
-  const url = projectId ? `/api/projects/${projectId}/analytics/errors?range=${range}` : null
+export function useErrorList(projectId: string, range: string, view: 'open' | 'all' | 'resolved' = 'open') {
+  const url = projectId ? `/api/projects/${projectId}/analytics/errors?range=${range}&view=${view}` : null
   return usePollData<ErrorGroup[]>(url, [])
 }

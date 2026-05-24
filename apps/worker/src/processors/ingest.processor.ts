@@ -2,7 +2,6 @@ import type { Job } from 'bullmq'
 import pino from 'pino'
 import { prisma } from '@pulse/db'
 import type { IngestEvent } from '@pulse/types'
-import { evaluateAlerts } from '../lib/alert-evaluator'
 
 const logger = pino({ name: 'ingest-processor' })
 
@@ -11,7 +10,7 @@ export interface IngestJobData extends IngestEvent {
 }
 
 export async function processIngest(job: Job<IngestJobData>): Promise<void> {
-  const { projectId, method, route, statusCode, responseTime, timestamp } = job.data
+  const { projectId, method, route, statusCode, responseTime, timestamp, stack } = job.data
 
   if (!projectId || !method || !route || statusCode == null || responseTime == null || !timestamp) {
     throw new Error(`Job ${job.id} is missing required fields: ${JSON.stringify(job.data)}`)
@@ -24,14 +23,8 @@ export async function processIngest(job: Job<IngestJobData>): Promise<void> {
   })
 
   if (statusCode >= 400) {
-    await upsertErrorEvent({ projectId, route, statusCode, timestamp: ts })
+    await upsertErrorEvent({ projectId, route, statusCode, timestamp: ts, stack })
   }
-
-  // Evaluate error_rate and response_time alerts after each ingested event.
-  // Fire-and-forget — never throw into the ingest job on evaluator failure.
-  evaluateAlerts(projectId).catch((err: unknown) => {
-    logger.error({ projectId, err }, 'Alert evaluation failed after ingest')
-  })
 
   logger.info({ jobId: job.id, projectId, route, statusCode, responseTime }, 'Processed ingest job')
 }
@@ -41,8 +34,9 @@ async function upsertErrorEvent(params: {
   route: string
   statusCode: number
   timestamp: Date
+  stack?: string
 }): Promise<void> {
-  const { projectId, route, statusCode, timestamp } = params
+  const { projectId, route, statusCode, timestamp, stack } = params
 
   await prisma.errorEvent.upsert({
     where: {
@@ -51,12 +45,15 @@ async function upsertErrorEvent(params: {
     update: {
       count: { increment: 1 },
       lastSeen: timestamp,
+      // Update stack with the most recent non-null trace
+      ...(stack ? { stack } : {}),
     },
     create: {
       projectId,
       route,
       statusCode,
       message: `HTTP ${statusCode}`,
+      stack: stack ?? null,
       firstSeen: timestamp,
       lastSeen: timestamp,
     },

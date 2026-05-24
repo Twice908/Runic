@@ -62,19 +62,42 @@ function TypeCard({ value, selected, onClick, icon, title, description }: TypeCa
 
 interface AlertCardProps {
   alert: AlertRule
+  projectId: string
   onToggle: (id: string, active: boolean) => void
   onDelete: (id: string) => void
   deleting: string | null
   toggling: string | null
 }
 
-function AlertCard({ alert, onToggle, onDelete, deleting, toggling }: AlertCardProps) {
+function AlertCard({ alert, projectId, onToggle, onDelete, deleting, toggling }: AlertCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<'sent' | string | null>(null)
+
+  async function handleTest() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/alerts/${alert.id}/test`, { method: 'POST' })
+      const json = (await res.json()) as { success?: boolean; error?: { message?: string } }
+      if (res.ok && json.success) {
+        setTestResult('sent')
+      } else {
+        setTestResult(json.error?.message ?? `HTTP ${res.status}`)
+      }
+    } catch {
+      setTestResult('Network error')
+    } finally {
+      setTesting(false)
+      setTimeout(() => setTestResult(null), 3000)
+    }
+  }
 
   const typeBadge: Record<string, string> = {
     uptime: 'bg-blue-100 text-blue-700',
     error_rate: 'bg-red-100 text-red-700',
     response_time: 'bg-amber-100 text-amber-700',
+    rate_limit_spike: 'bg-indigo-100 text-indigo-700',
   }
   const channelBadge: Record<string, string> = {
     email: 'bg-purple-100 text-purple-700',
@@ -103,7 +126,12 @@ function AlertCard({ alert, onToggle, onDelete, deleting, toggling }: AlertCardP
         )}
         {alert.type !== 'uptime' && (
           <p className="text-xs text-gray-400 mt-0.5">
-            Threshold: {alert.type === 'error_rate' ? `${alert.threshold}%` : `${alert.threshold}ms`}
+            Threshold:{' '}
+            {alert.type === 'error_rate'
+              ? `${alert.threshold}%`
+              : alert.type === 'rate_limit_spike'
+              ? `${alert.threshold} blocks / 5 min`
+              : `${alert.threshold}ms`}
             {alert.route ? ` · Route: ${alert.route}` : ''}
           </p>
         )}
@@ -113,6 +141,31 @@ function AlertCard({ alert, onToggle, onDelete, deleting, toggling }: AlertCardP
       </div>
 
       <div className="flex items-center gap-3 flex-shrink-0">
+        {/* Send test */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleTest}
+            disabled={testing}
+            className="text-xs text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+          >
+            {testing ? (
+              <span className="inline-flex items-center gap-1">
+                <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Sending…
+              </span>
+            ) : 'Send test'}
+          </button>
+          {testResult === 'sent' && (
+            <span className="text-xs text-green-600 font-medium">Test sent</span>
+          )}
+          {testResult && testResult !== 'sent' && (
+            <span className="text-xs text-red-500 max-w-[120px] truncate" title={testResult}>{testResult}</span>
+          )}
+        </div>
+
         {/* Active toggle */}
         <button
           onClick={() => onToggle(alert.id, !alert.active)}
@@ -227,13 +280,15 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
       {step === 1 && (
         <div className="space-y-4">
           <p className="text-sm font-medium text-gray-700">What do you want to monitor?</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <TypeCard value="uptime" selected={alertType === 'uptime'} onClick={() => setAlertType('uptime')}
               icon="🌐" title="Uptime Monitor" description="Ping a URL every 60s and alert when it goes down" />
             <TypeCard value="error_rate" selected={alertType === 'error_rate'} onClick={() => setAlertType('error_rate')}
               icon="🔴" title="Error Rate" description="Alert when error rate exceeds a threshold" />
             <TypeCard value="response_time" selected={alertType === 'response_time'} onClick={() => setAlertType('response_time')}
               icon="⏱" title="Response Time" description="Alert when P99 latency exceeds a threshold" />
+            <TypeCard value="rate_limit_spike" selected={alertType === 'rate_limit_spike'} onClick={() => setAlertType('rate_limit_spike')}
+              icon="🛡" title="Rate Limit Spike" description="Alert when blocked requests spike or a key nears its limit" />
           </div>
           <div className="flex justify-end">
             <button onClick={() => setStep(2)} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
@@ -299,6 +354,25 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
                 <p className="text-xs text-gray-400 mt-1">Leave blank to monitor all routes</p>
               </div>
             </>
+          )}
+          {alertType === 'rate_limit_spike' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Block count threshold (per 5 minutes)
+              </label>
+              <input
+                type="number"
+                min={1}
+                placeholder="100"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Alert fires when blocked requests exceed this count in 5 minutes, or when any single
+                key reaches 90% of its limit.
+              </p>
+            </div>
           )}
           <div className="flex justify-between">
             <button onClick={() => setStep(1)} className="text-sm text-gray-500 hover:text-gray-700">← Back</button>
@@ -471,6 +545,7 @@ export default function AlertsPage() {
               <AlertCard
                 key={alert.id}
                 alert={alert}
+                projectId={projectId}
                 onToggle={handleToggle}
                 onDelete={handleDelete}
                 toggling={toggling}

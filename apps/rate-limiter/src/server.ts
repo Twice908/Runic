@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import { env } from './env'
 import { checkRoutes } from './routes/check'
 import { rulesRoutes } from './routes/rules'
+import { analyticsRoutes } from './routes/analytics'
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -32,6 +33,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(checkRoutes, { prefix: '/v1' })
   await app.register(rulesRoutes, { prefix: '/v1' })
+  await app.register(analyticsRoutes, { prefix: '/v1' })
 
   return app
 }

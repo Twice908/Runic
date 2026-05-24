@@ -34,6 +34,11 @@ export function pulse(config: PulseConfig): RequestHandler {
 
   return function pulseMiddleware(req: Request, res: Response, next: NextFunction): void {
     try {
+      if (req.headers['x-pulse-skip-log'] === 'true') {
+        next()
+        return
+      }
+
       // Skip ignored methods.
       if (ignoreMethods.has(req.method.toUpperCase())) {
         next()

@@ -45,6 +45,7 @@ async function pulsePluginImpl(fastify: FastifyInstance, config: PulseConfig): P
 
   fastify.addHook('onResponse', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      if (request.headers['x-pulse-skip-log'] === 'true') return
       if (ignoreMethods.has(request.method.toUpperCase())) return
 
       const path = request.url.split('?')[0] ?? request.url

@@ -5,6 +5,7 @@ const DEFAULT_TIMEOUT_MS = 5000
 
 export class PulseClient {
   private readonly config: PulseClientConfig
+  private hasPrintedSendError = false
 
   constructor(config: {
     apiKey: string
@@ -17,6 +18,13 @@ export class PulseClient {
       host: (config.host ?? DEFAULT_HOST).replace(/\/$/, ''),
       timeout: config.timeout ?? DEFAULT_TIMEOUT_MS,
       debug: config.debug ?? false,
+    }
+
+    if (!config.host && !process.env['PULSE_HOST']) {
+      console.warn(
+        '[Pulse] PULSE_HOST is not set — defaulting to https://api.pulse.dev. ' +
+        'Set PULSE_HOST=http://localhost:3000 for local development.',
+      )
     }
   }
 
@@ -67,9 +75,12 @@ export class PulseClient {
       }
     } catch (err) {
       clearTimeout(timer)
+      const message = err instanceof Error ? err.message : String(err)
       if (this.config.debug) {
-        const message = err instanceof Error ? err.message : String(err)
         console.log(`[Pulse] Send failed (events dropped): ${message}`)
+      } else if (!this.hasPrintedSendError) {
+        this.hasPrintedSendError = true
+        console.warn(`[Pulse] Failed to send events to ${this.config.host} — check PULSE_HOST and PULSE_API_KEY. (${message})`)
       }
       // Silently drop — never throw, never reject.
     }

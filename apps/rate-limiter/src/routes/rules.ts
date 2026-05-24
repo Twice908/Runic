@@ -140,6 +140,26 @@ export async function rulesRoutes(app: FastifyInstance): Promise<void> {
     })
   })
 
+  // DELETE /v1/rules/:ruleId — remove a rule and invalidate cache immediately
+  app.delete<{ Params: { ruleId: string } }>('/rules/:ruleId', async (request, reply) => {
+    const { ruleId } = request.params
+
+    const existing = await prisma.rateLimitRule.findUnique({ where: { id: ruleId } })
+    if (!existing) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Rule not found' },
+      })
+    }
+
+    await prisma.rateLimitRule.delete({ where: { id: ruleId } })
+    await invalidateRulesCache(redis, existing.projectId)
+
+    request.log.info({ ruleId, projectId: existing.projectId }, 'rule deleted')
+
+    return reply.status(204).send()
+  })
+
   // PUT /v1/rules/:ruleId/toggle — flip enabled; cache invalidated immediately
   app.put<{ Params: { ruleId: string } }>('/rules/:ruleId/toggle', async (request, reply) => {
     const { ruleId } = request.params

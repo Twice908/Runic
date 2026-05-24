@@ -8,6 +8,10 @@ const createProjectBodySchema = z.object({
   name: z.string().min(1).max(100).trim(),
 })
 
+const patchProjectBodySchema = z.object({
+  name: z.string().min(1).max(64).trim(),
+})
+
 export async function projectRoutes(app: FastifyInstance): Promise<void> {
   app.post('/projects', async (request, reply) => {
     const clerkId = await verifyClerkJwt(request.headers.authorization, reply)
@@ -51,6 +55,76 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
         apiKeyPrefix: project.apiKeyPrefix,
       },
     })
+  })
+
+  // PATCH /projects/:projectId — rename a project (name only)
+  app.patch('/projects/:projectId', async (request, reply) => {
+    const clerkId = await verifyClerkJwt(request.headers.authorization, reply)
+    if (!clerkId) return
+
+    const { projectId } = request.params as { projectId: string }
+
+    const user = await prisma.user.findUnique({ where: { clerkId } })
+    if (!user) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found. Please sign in again.' },
+      })
+    }
+
+    const project = await prisma.project.findFirst({ where: { id: projectId, userId: user.id } })
+    if (!project) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Project not found' },
+      })
+    }
+
+    const parsed = patchProjectBodySchema.safeParse(request.body)
+    if (!parsed.success) {
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'BAD_REQUEST', message: parsed.error.message },
+      })
+    }
+
+    const updated = await prisma.project.update({
+      where: { id: projectId },
+      data: { name: parsed.data.name },
+    })
+
+    return reply.send({
+      success: true,
+      data: { id: updated.id, name: updated.name },
+    })
+  })
+
+  // DELETE /projects/:projectId — permanently delete a project and all related data
+  app.delete('/projects/:projectId', async (request, reply) => {
+    const clerkId = await verifyClerkJwt(request.headers.authorization, reply)
+    if (!clerkId) return
+
+    const { projectId } = request.params as { projectId: string }
+
+    const user = await prisma.user.findUnique({ where: { clerkId } })
+    if (!user) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found. Please sign in again.' },
+      })
+    }
+
+    const project = await prisma.project.findFirst({ where: { id: projectId, userId: user.id } })
+    if (!project) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Project not found' },
+      })
+    }
+
+    await prisma.project.delete({ where: { id: projectId } })
+
+    return reply.status(204).send()
   })
 
   // DEV CONVENIENCE — regenerates and reveals the API key. Remove before production.

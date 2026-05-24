@@ -1,6 +1,6 @@
 import pino from 'pino'
 import { prisma } from '@pulse/db'
-import { evaluateAlerts } from '../lib/alert-evaluator'
+import { evaluateUptimeAlerts } from '../lib/alert-evaluator'
 
 const logger = pino({ name: 'uptime-processor' })
 
@@ -28,7 +28,7 @@ async function pingAndRecord(projectId: string, url: string): Promise<void> {
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
     try {
-      const res = await fetch(url, { method: 'GET', signal: controller.signal })
+      const res = await fetch(url, { method: 'GET', signal: controller.signal, headers: { 'X-Pulse-Skip-Log': 'true' } })
       clearTimeout(timer)
       responseTime = Date.now() - start
       httpStatusCode = res.status
@@ -53,5 +53,5 @@ async function pingAndRecord(projectId: string, url: string): Promise<void> {
 
   logger.debug({ projectId, url, status, responseTime, httpStatusCode }, 'Uptime check recorded')
 
-  await evaluateAlerts(projectId)
+  await evaluateUptimeAlerts(projectId)
 }

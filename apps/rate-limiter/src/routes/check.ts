@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto'
 import { type FastifyInstance } from 'fastify'
 import { z } from 'zod'
+import pino from 'pino'
+
+const logger = pino({ name: 'rate-limiter-check' })
 import micromatch from 'micromatch'
 import { redis } from '../plugins/redis'
 import { prisma } from '../plugins/prisma'
@@ -108,6 +111,12 @@ async function runCheck(body: CheckBody): Promise<CheckResponse> {
       path: body.path,
       action: eventAction,
       timestamp: new Date().toISOString(),
+    })
+    .then((job) => {
+      logger.debug(
+        { jobId: job.id, projectId: body.projectId, path: body.path, action: eventAction },
+        'Rate limit event enqueued',
+      )
     })
     .catch(() => null)
 

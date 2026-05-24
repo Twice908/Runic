@@ -4,6 +4,8 @@ import pino from 'pino'
 import { env } from './env'
 import { processIngest } from './processors/ingest.processor'
 import { processUptimeCheck } from './processors/uptime.processor'
+import { processObserveAlertsCheck } from './processors/observe-alerts.processor'
+import { processRateLimitEvent } from './processors/rate-limit-event.processor'
 
 const logger = pino({ name: 'worker', level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
 
@@ -17,6 +19,9 @@ const connection = {
 
 const UPTIME_JOB_NAME = 'uptime-check'
 const UPTIME_REPEAT_MS = 60_000
+
+const OBSERVE_ALERTS_JOB_NAME = 'observe-alerts-check'
+const OBSERVE_ALERTS_REPEAT_MS = 60_000
 
 // ── Ingest worker ────────────────────────────────────────────────────────────
 const ingestWorker = new Worker('ingest', processIngest, {
@@ -65,4 +70,50 @@ registerUptimeJob().catch((err: unknown) => {
   logger.error({ err }, 'Failed to register uptime repeatable job')
 })
 
-logger.info('Worker started — ingest queue + uptime repeatable job active')
+// ── Observe alerts repeatable worker ─────────────────────────────────────────
+const observeAlertsQueue = new Queue('observe-alerts', { connection })
+
+const observeAlertsWorker = new Worker(
+  'observe-alerts',
+  async () => {
+    await processObserveAlertsCheck()
+  },
+  { connection, concurrency: 1 },
+)
+
+observeAlertsWorker.on('failed', (job, err) => {
+  logger.error({ jobId: job?.id, error: err.message }, 'Observe-alerts job failed')
+})
+
+async function registerObserveAlertsJob(): Promise<void> {
+  const repeatableJobs = await observeAlertsQueue.getRepeatableJobs()
+  for (const job of repeatableJobs) {
+    if (job.name === OBSERVE_ALERTS_JOB_NAME) {
+      await observeAlertsQueue.removeRepeatableByKey(job.key)
+      logger.info({ key: job.key }, 'Removed stale observe-alerts repeatable job')
+    }
+  }
+
+  await observeAlertsQueue.add(OBSERVE_ALERTS_JOB_NAME, {}, { repeat: { every: OBSERVE_ALERTS_REPEAT_MS } })
+  logger.info({ repeatEveryMs: OBSERVE_ALERTS_REPEAT_MS }, 'Observe-alerts repeatable job registered')
+}
+
+registerObserveAlertsJob().catch((err: unknown) => {
+  logger.error({ err }, 'Failed to register observe-alerts repeatable job')
+})
+
+// ── Rate-limit-event worker ───────────────────────────────────────────────────
+const rateLimitEventWorker = new Worker('rate-limit-events', processRateLimitEvent, {
+  connection,
+  concurrency: 10,
+})
+
+rateLimitEventWorker.on('completed', (job) => {
+  logger.debug({ jobId: job.id }, 'Rate-limit-event job completed')
+})
+
+rateLimitEventWorker.on('failed', (job, err) => {
+  logger.error({ jobId: job?.id, error: err.message, stack: err.stack }, 'Rate-limit-event job failed')
+})
+
+logger.info('Worker started — ingest queue + uptime repeatable job + rate-limit-events queue active')

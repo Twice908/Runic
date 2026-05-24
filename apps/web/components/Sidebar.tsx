@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { label: 'Errors', href: '/dashboard/errors' },
   { label: 'Alerts', href: '/dashboard/alerts' },
   { label: 'Uptime', href: '/dashboard/uptime' },
+  { label: 'Rate Limiter', href: '/dashboard/rate-limiter' },
+  { label: 'Settings', href: '/dashboard/settings' },
 ]
 
 export default function Sidebar({ projects }: SidebarProps) {
@@ -71,7 +73,10 @@ export default function Sidebar({ projects }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href
+          const isActive =
+            item.href === '/dashboard'
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <button
               key={item.href}

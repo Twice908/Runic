@@ -11,6 +11,7 @@ const ingestEventSchema = z.object({
   statusCode: z.number().int().min(100).max(599),
   responseTime: z.number().int().min(0),
   timestamp: z.string().datetime(),
+  stack: z.string().max(10_000).optional(),
 })
 
 const ingestBodySchema = z.object({

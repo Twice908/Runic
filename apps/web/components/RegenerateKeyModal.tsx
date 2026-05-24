@@ -61,7 +61,7 @@ export default function RegenerateKeyModal({ projectId, onClose }: RegenerateKey
             <div className="px-6 py-5 space-y-4">
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
                 <p className="text-sm font-medium text-red-800">
-                  Any SDKs or scripts using the old key will stop sending data immediately.
+                  This will permanently invalidate your current API key. Any integrations using it will stop working immediately. This cannot be undone.
                 </p>
               </div>
               {error && <p className="text-xs text-red-500">{error}</p>}
@@ -91,12 +91,9 @@ export default function RegenerateKeyModal({ projectId, onClose }: RegenerateKey
               <p className="mt-1 text-sm text-gray-500">Copy this key now — it will not be shown again.</p>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3">
-                <p className="text-xs font-bold text-yellow-900 uppercase tracking-wide">
-                  DEV ONLY — Remove before production
-                </p>
-                <p className="mt-1 text-xs text-yellow-800">
-                  This key regeneration feature is a temporary dev convenience and will be removed before launch.
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-sm font-medium text-amber-800">
+                  Save this key now — it will not be shown again.
                 </p>
               </div>
               <div>

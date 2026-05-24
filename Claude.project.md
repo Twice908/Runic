@@ -237,6 +237,21 @@ Architecture defined, stack chosen, data models designed.
 
 ---
 
+## Alert System — DO NOT TOUCH
+
+The alert system (error rate, response time, uptime, and rate limit spike alerts) is fully working and battle-tested. Never modify, refactor, or "improve" any alert logic in any future work on Pulse Observe or Rate Limiter.
+
+Files that are off-limits:
+- `apps/worker/src/lib/alert-evaluator.ts`
+- `apps/worker/src/processors/observe-alerts.processor.ts`
+- `apps/api/src/routes/alerts.ts`
+- `apps/web/app/dashboard/alerts/` (all files)
+- `apps/web/app/api/projects/[id]/alerts/` (all files)
+
+If a future task touches alerts, stop and ask the user before proceeding.
+
+---
+
 ## Non-Negotiables (Never Violate These)
 
 1. **Ingestion API p99 < 50ms** — queue immediately, never do DB writes in the request path.

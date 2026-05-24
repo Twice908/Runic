@@ -1,6 +1,6 @@
 export type PlanType = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE'
 
-export type AlertType = 'error_rate' | 'response_time' | 'uptime'
+export type AlertType = 'error_rate' | 'response_time' | 'uptime' | 'rate_limit_spike'
 
 export type AlertChannel = 'email' | 'slack'
 
@@ -10,6 +10,7 @@ export interface IngestEvent {
   statusCode: number
   responseTime: number
   timestamp: string
+  stack?: string
 }
 
 export interface IngestPayload {
@@ -114,6 +115,8 @@ export interface ErrorGroup {
   firstSeen: string
   lastSeen: string
   stack?: string
+  resolved: boolean
+  resolvedAt?: string | null
 }
 
 export interface AlertRule {

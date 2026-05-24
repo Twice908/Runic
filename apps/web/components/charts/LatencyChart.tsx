@@ -28,20 +28,28 @@ export default function LatencyChart({ data, range, isLoading }: LatencyChartPro
   if (isLoading) {
     return <div className="h-[300px] animate-pulse rounded-xl bg-gray-100" />
   }
-  if (data.length === 0) {
-    return (
-      <div className="flex h-[300px] items-center justify-center rounded-xl border border-dashed border-gray-200 text-sm text-gray-400">
-        No latency data for this time range
-      </div>
-    )
-  }
 
-  const chartData = data.map((d) => ({
-    bucket: formatLabel(d.bucket, range),
-    p50: Math.round(d.p50),
-    p90: Math.round(d.p90),
-    p99: Math.round(d.p99),
-  }))
+  const rangeStartMs = range === '7d'
+    ? Date.now() - 7 * 24 * 60 * 60 * 1000
+    : Date.now() - 24 * 60 * 60 * 1000
+
+  const chartData = (() => {
+    const mapped = data.map((d) => ({
+      bucket: formatLabel(d.bucket, range),
+      p50: Math.round(d.p50),
+      p90: Math.round(d.p90),
+      p99: Math.round(d.p99),
+    }))
+    if (mapped.length < 2) {
+      mapped.unshift({
+        bucket: formatLabel(new Date(rangeStartMs).toISOString(), range),
+        p50: 0,
+        p90: 0,
+        p99: 0,
+      })
+    }
+    return mapped
+  })()
 
   return (
     <ResponsiveContainer width="100%" height={300}>
