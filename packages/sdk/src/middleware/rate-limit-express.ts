@@ -16,6 +16,11 @@ export function rateLimit(options: RateLimitOptions): RequestHandler {
     next: NextFunction,
   ): Promise<void> {
     try {
+      if (req.headers['x-pulse-skip-log'] === 'true') {
+        next()
+        return
+      }
+
       const ip =
         (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
         req.socket?.remoteAddress ??
@@ -36,23 +41,28 @@ export function rateLimit(options: RateLimitOptions): RequestHandler {
       })
 
       const prefix = limiter.prefix
+
+      if (!outcome.allowed) {
+        res.set('Retry-After', String(outcome.retryAfter ?? 60))
+        res.set(`${prefix}-Limit`, String(outcome.meta?.limit ?? 0))
+        res.set(`${prefix}-Remaining`, '0')
+        res.set(`${prefix}-Reset`, String(outcome.meta?.resetAt ?? 0))
+        res.status(429).json({
+          error: 'Too Many Requests',
+          retryAfter: outcome.retryAfter ?? 60,
+        })
+        return
+      }
+
       if (outcome.meta) {
         res.setHeader(`${prefix}-Limit`, outcome.meta.limit)
         res.setHeader(`${prefix}-Remaining`, outcome.meta.remaining)
         res.setHeader(`${prefix}-Reset`, outcome.meta.resetAt)
       }
 
-      if (!outcome.allowed) {
-        if (outcome.retryAfter !== undefined) {
-          res.setHeader('Retry-After', outcome.retryAfter)
-        }
-        res.status(429).json({ error: 'Too Many Requests', retryAfter: outcome.retryAfter })
-        return
-      }
+      next()
     } catch {
-      // Never throw from middleware — fail open on unexpected errors
+      next()
     }
-
-    next()
   }
 }

@@ -36,17 +36,25 @@ async function rateLimitPluginImpl(
       })
 
       const prefix = limiter.prefix
+
+      if (!outcome.allowed) {
+        reply.headers({
+          'Retry-After': String(outcome.retryAfter ?? 60),
+          [`${prefix}-Limit`]: String(outcome.meta?.limit ?? 0),
+          [`${prefix}-Remaining`]: '0',
+          [`${prefix}-Reset`]: String(outcome.meta?.resetAt ?? 0),
+        })
+        reply.status(429).send({
+          error: 'Too Many Requests',
+          retryAfter: outcome.retryAfter ?? 60,
+        })
+        return
+      }
+
       if (outcome.meta) {
         void reply.header(`${prefix}-Limit`, outcome.meta.limit)
         void reply.header(`${prefix}-Remaining`, outcome.meta.remaining)
         void reply.header(`${prefix}-Reset`, outcome.meta.resetAt)
-      }
-
-      if (!outcome.allowed) {
-        if (outcome.retryAfter !== undefined) {
-          void reply.header('Retry-After', outcome.retryAfter)
-        }
-        await reply.status(429).send({ error: 'Too Many Requests', retryAfter: outcome.retryAfter })
       }
     } catch {
       // Never throw from a hook — fail open on unexpected errors
