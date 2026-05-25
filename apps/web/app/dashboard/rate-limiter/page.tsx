@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useRules } from '@/hooks/useRateLimiter'
 import { useHitRate, useTopOffenders } from '@/hooks/useRateLimitAnalytics'
 import RateLimitHitRateChart from '@/components/charts/RateLimitHitRateChart'
+import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelector'
 import { relativeTime } from '@/lib/utils'
 
 // ─── Skeleton card — mirrors StatsCards.tsx pattern exactly ──────────────────
@@ -75,16 +76,17 @@ export default function RateLimiterOverviewPage() {
 
   // ?rule=<ruleId> persists the selected rule across page refreshes and is shareable
   const selectedRuleId = searchParams.get('rule') ?? ''
+  const range = (searchParams.get('range') as TimeRange) ?? '24h'
 
   const { data: rules, isLoading: rulesLoading } = useRules(projectId)
   const { stats, isLoading: statsLoading } = useOverviewStats(projectId)
 
   // Pass selectedRuleId (undefined = all rules) to both analytics hooks
   const ruleFilter = selectedRuleId || undefined
-  const { data: hitRateData, isLoading: hitRateLoading } = useHitRate(projectId, '24h', ruleFilter)
+  const { data: hitRateData, isLoading: hitRateLoading } = useHitRate(projectId, range, ruleFilter)
   const { data: topOffenders, isLoading: offendersLoading } = useTopOffenders(
     projectId,
-    '24h',
+    range,
     10,
     ruleFilter,
   )
@@ -98,6 +100,15 @@ export default function RateLimiterOverviewPage() {
       } else {
         params.delete('rule')
       }
+      router.replace(`?${params.toString()}`)
+    },
+    [router, searchParams],
+  )
+
+  const setRange = useCallback(
+    (r: TimeRange) => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('range', r)
       router.replace(`?${params.toString()}`)
     },
     [router, searchParams],
@@ -247,30 +258,34 @@ export default function RateLimiterOverviewPage() {
       {/* Hit rate chart with per-rule selector */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-gray-900">Hit Rate (24h)</h2>
+          <h2 className="text-base font-semibold text-gray-900">Hit Rate ({range})</h2>
 
-          {/* Rule selector — hidden when ≤ 1 rule */}
-          {showRuleSelector && (
-            <select
-              value={selectedRuleId}
-              onChange={(e) => selectRule(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">All Rules</option>
-              {rules.map((rule) => (
-                <option key={rule.id} value={rule.id}>
-                  {rule.name}
-                </option>
-              ))}
-            </select>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Rule selector — hidden when ≤ 1 rule */}
+            {showRuleSelector && (
+              <select
+                value={selectedRuleId}
+                onChange={(e) => selectRule(e.target.value)}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Rules</option>
+                {rules.map((rule) => (
+                  <option key={rule.id} value={rule.id}>
+                    {rule.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <TimeRangeSelector value={range} onChange={setRange} />
+          </div>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
           {hitRateLoading ? (
             <div className="h-[300px] animate-pulse rounded-xl bg-gray-100" />
           ) : (
-            <RateLimitHitRateChart data={hitRateData} isLoading={false} />
+            <RateLimitHitRateChart data={hitRateData} range={range} isLoading={false} />
           )}
         </div>
       </section>
