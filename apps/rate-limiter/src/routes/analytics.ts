@@ -1,5 +1,6 @@
 import { type FastifyInstance } from 'fastify'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '../plugins/prisma'
 import { requireInternalToken } from '../middleware/auth'
 
@@ -17,11 +18,13 @@ const eventsQuerySchema = z.object({
 const hitRateQuerySchema = z.object({
   window: z.enum(['1h', '6h', '24h', '7d']).default('24h'),
   bucket: z.enum(['hour', 'day']).default('hour'),
+  ruleId: z.string().optional(),
 })
 
 const topOffendersQuerySchema = z.object({
   window: z.enum(['1h', '6h', '24h', '7d']).default('24h'),
   limit: z.coerce.number().int().positive().max(100).default(10),
+  ruleId: z.string().optional(),
 })
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -165,24 +168,47 @@ export async function analyticsRoutes(app: FastifyInstance): Promise<void> {
         })
       }
 
-      const { window, bucket } = parsed.data
+      const { window, bucket, ruleId } = parsed.data
       const since = new Date(Date.now() - windowToMs(window))
-      const truncUnit = bucket === 'day' ? 'day' : 'hour'
 
-      const rows = await prisma.$queryRaw<
-        Array<{ bucket: Date; ruleId: string; allowed: bigint; blocked: bigint }>
-      >`
-        SELECT
-          date_trunc(${truncUnit}, timestamp)         AS bucket,
-          "ruleId",
-          COUNT(*) FILTER (WHERE action = 'logged')   AS allowed,
-          COUNT(*) FILTER (WHERE action = 'blocked')  AS blocked
-        FROM "RateLimitEvent"
-        WHERE "projectId" = ${projectId}
-          AND timestamp >= ${since}
-        GROUP BY date_trunc(${truncUnit}, timestamp), "ruleId"
-        ORDER BY bucket ASC
-      `
+      // Use Prisma's typed API instead of raw SQL — the events page (which
+      // works) also uses findMany, so we know data is reachable this way.
+      const events = await prisma.rateLimitEvent.findMany({
+        where: {
+          projectId,
+          timestamp: { gte: since },
+          ...(ruleId ? { ruleId } : {}),
+        },
+        select: { timestamp: true, ruleId: true, action: true },
+      })
+
+      // Truncate timestamps in UTC to match what date_trunc would produce
+      function truncate(date: Date): Date {
+        const d = new Date(date)
+        if (bucket === 'day') d.setUTCHours(0, 0, 0, 0)
+        else d.setUTCMinutes(0, 0, 0)
+        return d
+      }
+
+      const grouped = new Map<
+        string,
+        { bucket: Date; ruleId: string; allowed: number; blocked: number }
+      >()
+      for (const ev of events) {
+        const t = truncate(ev.timestamp)
+        const key = `${t.toISOString()}|${ev.ruleId}`
+        let entry = grouped.get(key)
+        if (!entry) {
+          entry = { bucket: t, ruleId: ev.ruleId, allowed: 0, blocked: 0 }
+          grouped.set(key, entry)
+        }
+        if (ev.action === 'logged') entry.allowed++
+        else if (ev.action === 'blocked') entry.blocked++
+      }
+
+      const rows = Array.from(grouped.values()).sort(
+        (a, b) => a.bucket.getTime() - b.bucket.getTime(),
+      )
 
       const ruleIds = [...new Set(rows.map((r) => r.ruleId))]
       const rules = ruleIds.length
@@ -199,8 +225,8 @@ export async function analyticsRoutes(app: FastifyInstance): Promise<void> {
           bucket: r.bucket.toISOString(),
           ruleId: r.ruleId,
           ruleName: ruleNameById[r.ruleId] ?? r.ruleId,
-          allowed: Number(r.allowed),
-          blocked: Number(r.blocked),
+          allowed: r.allowed,
+          blocked: r.blocked,
         })),
       })
     },
@@ -221,8 +247,9 @@ export async function analyticsRoutes(app: FastifyInstance): Promise<void> {
         })
       }
 
-      const { window, limit } = parsed.data
+      const { window, limit, ruleId } = parsed.data
       const since = new Date(Date.now() - windowToMs(window))
+      const ruleFilter = ruleId ? Prisma.sql`AND "ruleId" = ${ruleId}` : Prisma.empty
 
       const rows = await prisma.$queryRaw<
         Array<{ limitKey: string; ruleId: string; blockCount: bigint; lastSeen: Date }>
@@ -236,6 +263,7 @@ export async function analyticsRoutes(app: FastifyInstance): Promise<void> {
         WHERE "projectId" = ${projectId}
           AND action = 'blocked'
           AND timestamp >= ${since}
+          ${ruleFilter}
         GROUP BY "limitKey", "ruleId"
         ORDER BY "blockCount" DESC
         LIMIT ${limit}

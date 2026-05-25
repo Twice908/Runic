@@ -12,26 +12,28 @@ import {
 } from 'recharts'
 import type { HitRateBucket } from '@/hooks/useRateLimitAnalytics'
 
-function formatLabel(bucket: string): string {
+function formatLabel(bucket: string, range: string): string {
   const d = new Date(bucket)
+  if (range === '7d') return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
+const RANGE_MS: Record<string, number> = {
+  '1h': 60 * 60 * 1000,
+  '6h': 6 * 60 * 60 * 1000,
+  '24h': 24 * 60 * 60 * 1000,
+  '7d': 7 * 24 * 60 * 60 * 1000,
 }
 
 interface RateLimitHitRateChartProps {
   data: HitRateBucket[]
+  range: string
   isLoading: boolean
 }
 
-export default function RateLimitHitRateChart({ data, isLoading }: RateLimitHitRateChartProps) {
+export default function RateLimitHitRateChart({ data, range, isLoading }: RateLimitHitRateChartProps) {
   if (isLoading) {
     return <div className="h-[300px] animate-pulse rounded-xl bg-gray-100" />
-  }
-  if (data.length === 0) {
-    return (
-      <div className="flex h-[300px] items-center justify-center rounded-xl border border-dashed border-gray-200 text-sm text-gray-400">
-        No rate limit events in this time range
-      </div>
-    )
   }
 
   // Aggregate across all rules into time-bucketed totals
@@ -44,13 +46,25 @@ export default function RateLimitHitRateChart({ data, isLoading }: RateLimitHitR
     })
   }
 
-  const chartData = Array.from(bucketMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([bucket, counts]) => ({
-      bucket: formatLabel(bucket),
-      allowed: counts.allowed,
-      blocked: counts.blocked,
-    }))
+  const chartData = (() => {
+    const mapped = Array.from(bucketMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([bucket, counts]) => ({
+        bucket: formatLabel(bucket, range),
+        allowed: counts.allowed,
+        blocked: counts.blocked,
+      }))
+    // Mirror VolumeChart — insert a zero baseline at the range start when sparse
+    if (mapped.length < 2) {
+      const rangeStartMs = Date.now() - (RANGE_MS[range] ?? RANGE_MS['24h']!)
+      mapped.unshift({
+        bucket: formatLabel(new Date(rangeStartMs).toISOString(), range),
+        allowed: 0,
+        blocked: 0,
+      })
+    }
+    return mapped
+  })()
 
   return (
     <ResponsiveContainer width="100%" height={300}>
