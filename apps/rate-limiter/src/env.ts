@@ -10,7 +10,7 @@ const envSchema = z.object({
   RATE_LIMITER_INTERNAL_TOKEN: z.string().min(32),
   RATE_LIMITER_REDIS_URL: z.string().optional(),
   RATE_LIMITER_RULE_CACHE_TTL: z.string().default('30'),
-  RATE_LIMITER_CHECK_TIMEOUT_MS: z.string().default('10'),
+  RATE_LIMITER_CHECK_TIMEOUT_MS: z.string().default('1000'),
 })
 
 export const env = envSchema.parse(process.env)

@@ -36,15 +36,17 @@ function ErrorCard({ error, projectId, view, onResolved }: ErrorCardProps) {
 
   async function handleResolve() {
     setActioning(true)
-    await fetch(`/api/projects/${projectId}/errors/${error.id}/resolve`, { method: 'PATCH' })
+    const res = await fetch(`/api/projects/${projectId}/errors/${error.id}/resolve`, { method: 'PATCH' })
     setActioning(false)
+    if (!res.ok) return
     onResolved()
   }
 
   async function handleUnresolve() {
     setActioning(true)
-    await fetch(`/api/projects/${projectId}/errors/${error.id}/unresolve`, { method: 'PATCH' })
+    const res = await fetch(`/api/projects/${projectId}/errors/${error.id}/unresolve`, { method: 'PATCH' })
     setActioning(false)
+    if (!res.ok) return
     onResolved()
   }
 

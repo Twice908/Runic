@@ -176,7 +176,6 @@ export async function checkRoutes(app: FastifyInstance): Promise<void> {
     if (!outcome.allowed) {
       const { retryAfter } = outcome as { retryAfter: number }
       reply.header('Retry-After', retryAfter)
-      return reply.status(429).send(outcome)
     }
 
     return reply.send(outcome)
