@@ -1,0 +1,26 @@
+export const ALWAYS_IGNORED: readonly string[] = [
+  'PATH',
+  'HOME',
+  'USER',
+  'SHELL',
+  'TERM',
+  'PWD',
+  '_',
+  'SHLVL',
+  'OLDPWD',
+  'LOGNAME',
+  'TMPDIR',
+  'EDITOR',
+  'VISUAL',
+  'PAGER',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'COLORTERM',
+  'TERM_PROGRAM',
+  'SSH_AUTH_SOCK',
+  'XPC_FLAGS',
+  'XPC_SERVICE_NAME',
+]
+
+export const KEY_PATTERN = /^[A-Z][A-Z0-9_]*$/
