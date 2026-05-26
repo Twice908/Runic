@@ -7,6 +7,8 @@ const envSchema = z.object({
   DRIFT_COLLECTOR_PORT: z.string().default('3003'),
   DRIFT_INTERNAL_TOKEN: z.string().min(32),
   DRIFT_MAX_KEYS_PER_SNAPSHOT: z.string().default('500'),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().default('alerts@pulseobserve.com'),
 })
 
 export const env = envSchema.parse(process.env)

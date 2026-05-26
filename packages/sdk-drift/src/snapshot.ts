@@ -1,4 +1,5 @@
 import { extractKeyNames } from './extract'
+import fetch, { Response } from 'node-fetch'
 
 export interface DriftSnapshotOptions {
   environment: string

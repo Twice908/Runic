@@ -1,0 +1,31 @@
+name: 'Pulse Drift Check'
+description: 'Check environment variable drift against your baseline'
+inputs:
+  project-key:
+    description: 'Pulse API key'
+    required: true
+  environment:
+    description: 'Environment to check'
+    required: true
+  fail-on-drift:
+    description: 'Exit 1 if drift detected'
+    required: false
+    default: 'false'
+  ignore-keys:
+    description: 'Comma-separated keys to ignore'
+    required: false
+    default: ''
+  api-url:
+    description: 'Pulse Drift API URL'
+    required: false
+    default: 'https://drift.pulseobserve.com'
+outputs:
+  drift-score:
+    description: 'Drift score 0-100'
+  missing-keys:
+    description: 'Comma-separated missing keys'
+  extra-keys:
+    description: 'Comma-separated extra keys'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

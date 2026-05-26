@@ -1,6 +1,10 @@
 import Fastify, { type FastifyInstance } from 'fastify'
 import { env } from './env'
 import { snapshotRoutes } from './routes/snapshot'
+import { matrixRoutes } from './routes/matrix'
+import { keysRoutes } from './routes/keys'
+import { ciCheckRoutes } from './routes/ciCheck'
+import { eventsRoutes } from './routes/events'
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -38,6 +42,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   })
 
   await app.register(snapshotRoutes, { prefix: '/v1' })
+  await app.register(matrixRoutes, { prefix: '/v1' })
+  await app.register(keysRoutes, { prefix: '/v1' })
+  await app.register(ciCheckRoutes, { prefix: '/v1' })
+  await app.register(eventsRoutes, { prefix: '/v1' })
 
   return app
 }

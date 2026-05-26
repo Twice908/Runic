@@ -1,5 +1,5 @@
 import { Worker, type Job } from 'bullmq'
-import { DriftEventType } from '@pulse/db'
+import { DriftEventType } from '@prisma/client'
 import { prisma } from '../plugins/prisma'
 import { redis } from '../plugins/redis'
 import { redisUrl } from '../env'
@@ -8,6 +8,7 @@ import {
   driftDiffQueue,
   type DriftDiffJobData,
 } from '../lib/queue'
+import { dispatch } from '../lib/notifications'
 
 const parsed = new URL(redisUrl)
 const connection = {
@@ -15,6 +16,9 @@ const connection = {
   port: parseInt(parsed.port || '6379', 10),
   password: parsed.password || undefined,
 }
+
+const MILLIS_PER_DAY = 86_400_000
+const ALERT_DEBOUNCE_TTL_SECS = 300
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n))
@@ -25,6 +29,75 @@ async function invalidateMatrixCache(projectId: string): Promise<void> {
     await redis.del(`matrix:${projectId}`)
   } catch {
     // cache eviction failures must never crash the worker
+  }
+}
+
+interface NewDriftEvent {
+  keyName: string
+  driftType: DriftEventType
+}
+
+async function dispatchDriftAlerts(
+  projectId: string,
+  environmentId: string,
+  newEvents: NewDriftEvent[],
+): Promise<void> {
+  if (newEvents.length === 0) return
+
+  const [project, env, alerts] = await Promise.all([
+    prisma.project.findUnique({
+      where: { id: projectId },
+      select: { name: true },
+    }),
+    prisma.driftEnvironment.findUnique({
+      where: { id: environmentId },
+      select: { name: true },
+    }),
+    prisma.alert.findMany({
+      where: {
+        projectId,
+        active: true,
+        type: { in: ['drift_detected', 'key_missing_in_env', 'rotation_overdue'] },
+      },
+    }),
+  ])
+
+  if (alerts.length === 0) return
+
+  const projectName = project?.name ?? 'unknown'
+  const envName = env?.name ?? 'unknown'
+
+  for (const event of newEvents) {
+    const matchingTypes: string[] = ['drift_detected']
+    if (event.driftType === DriftEventType.MISSING_KEY) {
+      matchingTypes.push('key_missing_in_env')
+    } else if (event.driftType === DriftEventType.STALE_ROTATION) {
+      matchingTypes.push('rotation_overdue')
+    }
+
+    for (const alert of alerts) {
+      if (!matchingTypes.includes(alert.type)) continue
+
+      const debounceKey = `alert:debounce:${alert.id}:drift`
+      const acquired = await redis.set(debounceKey, '1', 'EX', ALERT_DEBOUNCE_TTL_SECS, 'NX')
+      if (!acquired) continue
+
+      try {
+        await dispatch({
+          alertId: alert.id,
+          projectId,
+          projectName,
+          alertType: alert.type,
+          channel: alert.channel as 'email' | 'slack',
+          destination: alert.destination,
+          triggeredValue: 1,
+          threshold: 0,
+          message: `Drift detected: ${event.driftType} for "${event.keyName}" in env "${envName}".`,
+        })
+      } catch {
+        // alert dispatch failures must never crash the diff worker
+      }
+    }
   }
 }
 
@@ -98,14 +171,19 @@ export async function processDriftDiff(job: Job<DriftDiffJobData>): Promise<void
     select: { id: true, keyName: true, driftType: true },
   })
   const openByType: Record<string, Set<string>> = {}
+  const openStaleIdByKey = new Map<string, string>()
   for (const e of openEvents) {
     if (!openByType[e.driftType]) openByType[e.driftType] = new Set()
     openByType[e.driftType].add(e.keyName)
+    if (e.driftType === DriftEventType.STALE_ROTATION) {
+      openStaleIdByKey.set(e.keyName, e.id)
+    }
   }
 
   const missingSet = new Set(missingKeys)
   const extraSet = new Set(extraKeys)
   const now = new Date()
+  const newlyCreatedEvents: NewDriftEvent[] = []
 
   for (const keyName of missingKeys) {
     if (!openByType[DriftEventType.MISSING_KEY]?.has(keyName)) {
@@ -117,6 +195,7 @@ export async function processDriftDiff(job: Job<DriftDiffJobData>): Promise<void
           driftType: DriftEventType.MISSING_KEY,
         },
       })
+      newlyCreatedEvents.push({ keyName, driftType: DriftEventType.MISSING_KEY })
     }
   }
 
@@ -130,6 +209,7 @@ export async function processDriftDiff(job: Job<DriftDiffJobData>): Promise<void
           driftType: DriftEventType.EXTRA_KEY,
         },
       })
+      newlyCreatedEvents.push({ keyName, driftType: DriftEventType.EXTRA_KEY })
     }
   }
 
@@ -157,13 +237,72 @@ export async function processDriftDiff(job: Job<DriftDiffJobData>): Promise<void
     }
   }
 
-  const score = clamp(100 - missingKeys.length * 10 - extraKeys.length * 5, 0, 100)
+  // ── PART 2: stale rotation detection ──────────────────────────────────────
+  // For keys present in BOTH env and baseline, check rotation policy from
+  // DriftKeyMeta (env-specific overrides global / environmentId=null).
+  const commonKeys = [...envKeys].filter((k) => baselineKeys.has(k))
+  const stalePerKey = new Set<string>()
+
+  if (commonKeys.length > 0) {
+    const metas = await prisma.driftKeyMeta.findMany({
+      where: {
+        projectId,
+        keyName: { in: commonKeys },
+        OR: [{ environmentId: null }, { environmentId }],
+      },
+    })
+    const metaByKey = new Map<string, (typeof metas)[number]>()
+    for (const m of metas) {
+      const existing = metaByKey.get(m.keyName)
+      if (!existing || (existing.environmentId === null && m.environmentId !== null)) {
+        metaByKey.set(m.keyName, m)
+      }
+    }
+
+    for (const keyName of commonKeys) {
+      const meta = metaByKey.get(keyName)
+      if (!meta || meta.rotationDays === null || meta.lastChangedAt === null) continue
+
+      const daysSince = (Date.now() - meta.lastChangedAt.getTime()) / MILLIS_PER_DAY
+      if (daysSince > meta.rotationDays) {
+        stalePerKey.add(keyName)
+        if (!openStaleIdByKey.has(keyName)) {
+          await prisma.driftEvent.create({
+            data: {
+              projectId,
+              environmentId,
+              keyName,
+              driftType: DriftEventType.STALE_ROTATION,
+            },
+          })
+          newlyCreatedEvents.push({ keyName, driftType: DriftEventType.STALE_ROTATION })
+        }
+      } else {
+        const openId = openStaleIdByKey.get(keyName)
+        if (openId) {
+          await prisma.driftEvent.update({
+            where: { id: openId },
+            data: { resolved: true, resolvedAt: now },
+          })
+        }
+      }
+    }
+  }
+
+  const score = clamp(
+    100 - missingKeys.length * 10 - extraKeys.length * 5 - stalePerKey.size * 15,
+    0,
+    100,
+  )
   await prisma.driftEnvironment.update({
     where: { id: environmentId },
     data: { driftScore: score, lastSeenAt: now },
   })
 
   await invalidateMatrixCache(projectId)
+
+  // ── PART 3: fire alerts for newly created drift events ────────────────────
+  await dispatchDriftAlerts(projectId, environmentId, newlyCreatedEvents)
 }
 
 export const driftDiffWorker = new Worker<DriftDiffJobData>(

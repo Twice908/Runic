@@ -2,12 +2,39 @@ import { createHash } from 'node:crypto'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { redis } from '../plugins/redis'
 import { prisma } from '../plugins/prisma'
+import { env } from '../env'
 
 const PROJECT_CACHE_TTL_SECS = 60
 const projectCacheKey = (apiKeyHash: string): string => `drift:project:${apiKeyHash}`
 
 function hashApiKey(rawKey: string): string {
   return createHash('sha256').update(rawKey).digest('hex')
+}
+
+/**
+ * Fastify preHandler: validates DRIFT_INTERNAL_TOKEN.
+ * Applied to all session-auth /v1 dashboard-facing routes (matrix, events, keys, etc.)
+ * which are called by the Next.js proxy after Clerk session validation.
+ */
+export async function requireInternalToken(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> {
+  const authHeader = request.headers.authorization
+  if (!authHeader?.startsWith('Bearer ')) {
+    await reply.status(401).send({
+      success: false,
+      error: { code: 'UNAUTHORIZED', message: 'Authorization header required' },
+    })
+    return
+  }
+  const token = authHeader.slice('Bearer '.length)
+  if (token !== env.DRIFT_INTERNAL_TOKEN) {
+    await reply.status(401).send({
+      success: false,
+      error: { code: 'INVALID_TOKEN', message: 'Invalid internal token' },
+    })
+  }
 }
 
 /**
