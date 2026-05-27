@@ -1,6 +1,5 @@
 import pino from 'pino'
 import { Resend } from 'resend'
-import { prisma } from '../plugins/prisma'
 import { env } from '../env'
 
 const logger = pino({ name: 'drift-notifications' })
@@ -9,28 +8,13 @@ export interface NotificationPayload {
   alertId: string
   projectId: string
   projectName: string
-  alertType: string
   channel: 'email' | 'slack'
   destination: string
-  triggeredValue: number
-  threshold: number
+  subject: string
   message: string
 }
 
 export async function dispatch(payload: NotificationPayload): Promise<void> {
-  await prisma.alertEvent.create({
-    data: {
-      alertId: payload.alertId,
-      projectId: payload.projectId,
-      type: payload.alertType,
-      triggeredValue: payload.triggeredValue,
-      threshold: payload.threshold,
-      message: payload.message,
-      channel: payload.channel,
-      destination: payload.destination,
-    },
-  })
-
   if (payload.channel === 'email') {
     await sendEmail(payload)
   } else {
@@ -45,17 +29,13 @@ async function sendEmail(payload: NotificationPayload): Promise<void> {
   }
 
   const resend = new Resend(env.RESEND_API_KEY)
-  const subject = `[Pulse Alert] ${payload.alertType} triggered for ${payload.projectName}`
   const dashboardUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'
 
   const html = `
 <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-  <h2 style="color:#dc2626;margin:0 0 16px">Alert Triggered</h2>
+  <h2 style="color:#dc2626;margin:0 0 16px">${payload.subject}</h2>
   <table style="width:100%;border-collapse:collapse">
     <tr><td style="padding:8px 0;color:#6b7280;width:140px">Project</td><td style="padding:8px 0;font-weight:600">${payload.projectName}</td></tr>
-    <tr><td style="padding:8px 0;color:#6b7280">Alert type</td><td style="padding:8px 0;font-weight:600">${payload.alertType}</td></tr>
-    <tr><td style="padding:8px 0;color:#6b7280">Current value</td><td style="padding:8px 0;font-weight:600">${payload.triggeredValue}</td></tr>
-    <tr><td style="padding:8px 0;color:#6b7280">Threshold</td><td style="padding:8px 0;font-weight:600">${payload.threshold}</td></tr>
     <tr><td style="padding:8px 0;color:#6b7280">Message</td><td style="padding:8px 0">${payload.message}</td></tr>
     <tr><td style="padding:8px 0;color:#6b7280">Time</td><td style="padding:8px 0">${new Date().toISOString()}</td></tr>
   </table>
@@ -66,7 +46,7 @@ async function sendEmail(payload: NotificationPayload): Promise<void> {
     await resend.emails.send({
       from: env.RESEND_FROM_EMAIL,
       to: payload.destination,
-      subject,
+      subject: payload.subject,
       html,
     })
     logger.info({ alertId: payload.alertId, to: payload.destination }, 'Email notification sent')
@@ -80,20 +60,17 @@ async function sendSlack(payload: NotificationPayload): Promise<void> {
     blocks: [
       {
         type: 'header',
-        text: { type: 'plain_text', text: `Pulse Alert: ${payload.alertType}` },
+        text: { type: 'plain_text', text: payload.subject },
       },
       {
         type: 'section',
         fields: [
           { type: 'mrkdwn', text: `*Project*\n${payload.projectName}` },
-          { type: 'mrkdwn', text: `*Alert type*\n${payload.alertType}` },
-          { type: 'mrkdwn', text: `*Current value*\n${payload.triggeredValue}` },
-          { type: 'mrkdwn', text: `*Threshold*\n${payload.threshold}` },
         ],
       },
       {
         type: 'section',
-        text: { type: 'mrkdwn', text: `*Message*: ${payload.message}` },
+        text: { type: 'mrkdwn', text: payload.message },
       },
       {
         type: 'context',

@@ -35,6 +35,58 @@ async function invalidateMatrixCache(projectId: string): Promise<void> {
 interface NewDriftEvent {
   keyName: string
   driftType: DriftEventType
+  rotationDays?: number
+  daysSinceRotation?: number
+}
+
+function matchingAlertTypes(driftType: DriftEventType): string[] {
+  if (driftType === DriftEventType.MISSING_KEY) {
+    return ['key_missing_in_env', 'drift_detected']
+  }
+  if (driftType === DriftEventType.EXTRA_KEY) {
+    return ['drift_detected']
+  }
+  if (driftType === DriftEventType.STALE_ROTATION) {
+    return ['rotation_overdue', 'drift_detected']
+  }
+  return []
+}
+
+function buildAlertContent(
+  alertType: string,
+  event: NewDriftEvent,
+  envName: string,
+  allNewEvents: NewDriftEvent[],
+): { subject: string; message: string } {
+  if (alertType === 'key_missing_in_env') {
+    return {
+      subject: `[Pulse Drift] ${event.keyName} missing in ${envName}`,
+      message: `${event.keyName} is present in production (baseline) but missing in ${envName}. Check your ${envName} configuration.`,
+    }
+  }
+  if (alertType === 'rotation_overdue') {
+    const days = Math.floor(event.daysSinceRotation ?? 0)
+    const schedule = event.rotationDays ?? 0
+    return {
+      subject: `[Pulse Drift] ${event.keyName} rotation overdue`,
+      message: `${event.keyName} has not been rotated in ${days} days. Rotation schedule: every ${schedule} days.`,
+    }
+  }
+  // drift_detected — aggregate across all newly created events
+  const missing = allNewEvents
+    .filter((e) => e.driftType === DriftEventType.MISSING_KEY)
+    .map((e) => e.keyName)
+  const extra = allNewEvents
+    .filter((e) => e.driftType === DriftEventType.EXTRA_KEY)
+    .map((e) => e.keyName)
+  const parts: string[] = []
+  if (missing.length > 0) parts.push(`Missing: ${missing.join(', ')}.`)
+  if (extra.length > 0) parts.push(`Extra: ${extra.join(', ')}.`)
+  const tail = parts.length > 0 ? ' ' + parts.join(' ') : ''
+  return {
+    subject: `[Pulse Drift] Drift detected in ${envName}`,
+    message: `${allNewEvents.length} key(s) drifted in ${envName} vs production baseline.${tail}`,
+  }
 }
 
 async function dispatchDriftAlerts(
@@ -68,31 +120,42 @@ async function dispatchDriftAlerts(
   const envName = env?.name ?? 'unknown'
 
   for (const event of newEvents) {
-    const matchingTypes: string[] = ['drift_detected']
-    if (event.driftType === DriftEventType.MISSING_KEY) {
-      matchingTypes.push('key_missing_in_env')
-    } else if (event.driftType === DriftEventType.STALE_ROTATION) {
-      matchingTypes.push('rotation_overdue')
-    }
+    const matchingTypes = matchingAlertTypes(event.driftType)
+    if (matchingTypes.length === 0) continue
 
     for (const alert of alerts) {
       if (!matchingTypes.includes(alert.type)) continue
 
       const debounceKey = `alert:debounce:${alert.id}:drift`
-      const acquired = await redis.set(debounceKey, '1', 'EX', ALERT_DEBOUNCE_TTL_SECS, 'NX')
-      if (!acquired) continue
+      const exists = await redis.exists(debounceKey)
+      if (exists) continue
+
+      const { subject, message } = buildAlertContent(alert.type, event, envName, newEvents)
 
       try {
         await dispatch({
           alertId: alert.id,
           projectId,
           projectName,
-          alertType: alert.type,
           channel: alert.channel as 'email' | 'slack',
           destination: alert.destination,
-          triggeredValue: 1,
-          threshold: 0,
-          message: `Drift detected: ${event.driftType} for "${event.keyName}" in env "${envName}".`,
+          subject,
+          message,
+        })
+
+        await redis.set(debounceKey, '1', 'EX', ALERT_DEBOUNCE_TTL_SECS)
+
+        await prisma.alertEvent.create({
+          data: {
+            alertId: alert.id,
+            projectId,
+            type: alert.type,
+            triggeredValue: newEvents.length,
+            threshold: 0,
+            message,
+            channel: alert.channel,
+            destination: alert.destination,
+          },
         })
       } catch {
         // alert dispatch failures must never crash the diff worker
@@ -275,7 +338,12 @@ export async function processDriftDiff(job: Job<DriftDiffJobData>): Promise<void
               driftType: DriftEventType.STALE_ROTATION,
             },
           })
-          newlyCreatedEvents.push({ keyName, driftType: DriftEventType.STALE_ROTATION })
+          newlyCreatedEvents.push({
+            keyName,
+            driftType: DriftEventType.STALE_ROTATION,
+            rotationDays: meta.rotationDays,
+            daysSinceRotation: daysSince,
+          })
         }
       } else {
         const openId = openStaleIdByKey.get(keyName)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import BackButton from '../BackButton'
 import type { DriftEvent, DriftEventType } from '../types'
 import { EVENT_ICONS, relativeTime } from '../utils'
 
@@ -92,6 +93,7 @@ export default function DriftEventsPage({
 
   return (
     <div className="max-w-5xl mx-auto p-8 space-y-6">
+      <BackButton />
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Drift Events</h1>
         <p className="text-sm text-gray-500 mt-0.5">Live feed of detected configuration drift</p>

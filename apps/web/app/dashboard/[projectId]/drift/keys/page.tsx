@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import BackButton from '../BackButton'
 
 interface KeyRow {
   keyName: string
@@ -108,6 +109,7 @@ export default function KeysPage({ params }: KeysPageProps) {
 
   return (
     <div className="max-w-6xl mx-auto p-8 space-y-6">
+      <BackButton />
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Keys</h1>
         <p className="text-sm text-gray-500 mt-0.5">

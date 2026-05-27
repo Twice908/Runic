@@ -4,7 +4,7 @@ import { prisma } from '@pulse/db'
 import { verifyClerkJwt } from '../lib/auth'
 import { env } from '../env'
 
-const ALERT_TYPES = ['uptime', 'error_rate', 'response_time', 'rate_limit_spike'] as const
+const ALERT_TYPES = ['uptime', 'error_rate', 'response_time', 'rate_limit_spike', 'drift_detected', 'key_missing_in_env', 'rotation_overdue'] as const
 const ALERT_CHANNELS = ['email', 'slack'] as const
 
 const createAlertSchema = z

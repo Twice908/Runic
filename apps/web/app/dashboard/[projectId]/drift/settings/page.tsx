@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useState } from 'react'
+import BackButton from '../BackButton'
 
 type Snippet = {
   id: string
@@ -130,6 +131,7 @@ driftSnapshot({
 
   return (
     <div className="max-w-4xl mx-auto p-8 space-y-10">
+      <BackButton />
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Drift Settings</h1>
         <p className="text-sm text-gray-500 mt-0.5">

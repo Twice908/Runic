@@ -31,8 +31,20 @@ function relativeTime(iso: string): string {
 
 // ── type cards ────────────────────────────────────────────────────────────────
 
+type DriftAlertType = 'drift_detected' | 'key_missing_in_env' | 'rotation_overdue'
+
+const DRIFT_DESCRIPTIONS: Record<DriftAlertType, string> = {
+  drift_detected: 'Alert when any environment drifts from baseline',
+  key_missing_in_env: 'Alert when a specific key is missing from any environment',
+  rotation_overdue: 'Alert when a key exceeds its rotation schedule',
+}
+
+function isDriftAlert(t: string): t is DriftAlertType {
+  return t === 'drift_detected' || t === 'key_missing_in_env' || t === 'rotation_overdue'
+}
+
 interface TypeCardProps {
-  value: AlertType
+  value: string
   selected: boolean
   onClick: () => void
   icon: string
@@ -220,7 +232,7 @@ interface CreateFormProps {
 
 function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [alertType, setAlertType] = useState<AlertType>('uptime')
+  const [alertType, setAlertType] = useState<AlertType | DriftAlertType>('uptime')
   const [channel, setChannel] = useState<AlertChannel>('email')
   const [threshold, setThreshold] = useState('')
   const [url, setUrl] = useState('')
@@ -233,11 +245,12 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
     setSubmitting(true)
     setError(null)
     try {
+      const drift = isDriftAlert(alertType)
       const body: Record<string, unknown> = {
         type: alertType,
         channel,
         destination,
-        threshold: alertType === 'uptime' ? 0 : parseFloat(threshold),
+        threshold: drift || alertType === 'uptime' ? 0 : parseFloat(threshold),
       }
       if (alertType === 'uptime') body['url'] = url
       if (alertType === 'response_time' && route) body['route'] = route
@@ -289,9 +302,21 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
               icon="⏱" title="Response Time" description="Alert when P99 latency exceeds a threshold" />
             <TypeCard value="rate_limit_spike" selected={alertType === 'rate_limit_spike'} onClick={() => setAlertType('rate_limit_spike')}
               icon="🛡" title="Rate Limit Spike" description="Alert when blocked requests spike or a key nears its limit" />
+            <TypeCard value="drift_detected" selected={alertType === 'drift_detected'} onClick={() => setAlertType('drift_detected')}
+              icon="🧬" title="Drift Detected" description="Alert when any environment drifts from baseline" />
+            <TypeCard value="key_missing_in_env" selected={alertType === 'key_missing_in_env'} onClick={() => setAlertType('key_missing_in_env')}
+              icon="🔑" title="Key Missing in Environment" description="Alert when a specific key is missing from any environment" />
+            <TypeCard value="rotation_overdue" selected={alertType === 'rotation_overdue'} onClick={() => setAlertType('rotation_overdue')}
+              icon="🔄" title="Rotation Overdue" description="Alert when a key exceeds its rotation schedule" />
           </div>
+          {isDriftAlert(alertType) && (
+            <p className="text-sm text-gray-600">{DRIFT_DESCRIPTIONS[alertType]}</p>
+          )}
           <div className="flex justify-end">
-            <button onClick={() => setStep(2)} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+            <button
+              onClick={() => setStep(isDriftAlert(alertType) ? 3 : 2)}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
               Next →
             </button>
           </div>
@@ -444,7 +469,12 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
           {error && <p className="text-xs text-red-600">{error}</p>}
 
           <div className="flex justify-between">
-            <button onClick={() => setStep(2)} className="text-sm text-gray-500 hover:text-gray-700">← Back</button>
+            <button
+              onClick={() => setStep(isDriftAlert(alertType) ? 1 : 2)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              ← Back
+            </button>
             <button
               onClick={submit}
               disabled={!destination || submitting}

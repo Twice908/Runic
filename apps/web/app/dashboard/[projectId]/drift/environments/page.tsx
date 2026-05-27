@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import BackButton from '../BackButton'
 import type { DriftEnvironmentSummary } from '../types'
 import { relativeTime, scoreBgClasses, scoreColorClasses } from '../utils'
 
@@ -57,6 +58,7 @@ export default function DriftEnvironmentsPage({
 
   return (
     <div className="max-w-4xl mx-auto p-8 space-y-6">
+      <BackButton />
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Environments</h1>
         <p className="text-sm text-gray-500 mt-0.5">Drift scores and baseline selection</p>
