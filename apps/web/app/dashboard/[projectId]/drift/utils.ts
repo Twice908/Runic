@@ -25,9 +25,9 @@ export function scoreColorClasses(score: number): string {
 }
 
 export function scoreBgClasses(score: number): string {
-  if (score >= SCORE_GREEN_MIN) return 'bg-green-50 border-green-200'
-  if (score >= SCORE_YELLOW_MIN) return 'bg-amber-50 border-amber-200'
-  return 'bg-red-50 border-red-200'
+  if (score >= SCORE_GREEN_MIN) return 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+  if (score >= SCORE_YELLOW_MIN) return 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
+  return 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
 }
 
 const SECONDS_IN_MINUTE = 60

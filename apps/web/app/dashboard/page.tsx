@@ -45,8 +45,8 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900">No projects yet</h2>
-          <p className="mt-2 text-sm text-gray-500">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">No projects yet</h2>
+          <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
             Create your first project to start ingesting request logs.
           </p>
           <button
@@ -66,10 +66,10 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto p-8">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-xl font-semibold text-gray-900">Overview</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Overview</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+          className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-slate-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
         >
           New project
         </button>

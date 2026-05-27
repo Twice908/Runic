@@ -148,27 +148,27 @@ export default function RateLimiterEventsPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <tr className="border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-700">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                   Timestamp
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                   Path
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                   Rule
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                   Key Value
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                   Action
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                   Time
                 </th>
               </tr>
@@ -187,18 +187,18 @@ export default function RateLimiterEventsPage() {
                   <tr
                     key={event.id}
                     className={[
-                      'border-b border-gray-100 transition-colors duration-150 hover:bg-gray-50',
+                      'border-b border-gray-100 dark:border-slate-700 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-slate-700',
                       isNew ? 'animate-flash-new' : '',
                     ].join(' ')}
                   >
-                    <td className="px-6 py-3 text-xs text-gray-500 whitespace-nowrap">
+                    <td className="px-6 py-3 text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">
                       {new Date(event.timestamp).toLocaleTimeString()}
                     </td>
-                    <td className="px-4 py-3 font-mono text-sm text-gray-800">{event.path}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600">
+                    <td className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-slate-100">{event.path}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600 dark:text-slate-400">
                       {event.ruleName ?? event.ruleId.slice(0, 8) + '…'}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500 max-w-[160px] truncate">
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-slate-400 max-w-[160px] truncate">
                       {event.limitKey}
                     </td>
                     <td className="px-4 py-3">
@@ -208,7 +208,7 @@ export default function RateLimiterEventsPage() {
                         {event.action}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-xs text-gray-500">
+                    <td className="px-4 py-3 text-right text-xs text-gray-500 dark:text-slate-500">
                       {relativeTime(event.timestamp)}
                     </td>
                   </tr>

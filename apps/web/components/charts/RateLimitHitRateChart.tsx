@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { HitRateBucket } from '@/hooks/useRateLimitAnalytics'
+import ChartTooltip from './ChartTooltip'
 
 function formatLabel(bucket: string, range: string): string {
   const d = new Date(bucket)
@@ -83,11 +84,7 @@ export default function RateLimitHitRateChart({ data, range, isLoading }: RateLi
         <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#9ca3af' }} stroke="#e5e7eb" />
         <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} stroke="#e5e7eb" />
         <Tooltip
-          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-          formatter={(value, name) => [
-            typeof value === 'number' ? value.toLocaleString() : String(value),
-            name === 'allowed' ? 'Allowed' : 'Blocked',
-          ]}
+          content={<ChartTooltip valueFormatter={(v, name) => `${v.toLocaleString()} ${name === 'allowed' ? 'allowed' : 'blocked'}`} />}
         />
         <Legend
           formatter={(value) => (value === 'allowed' ? 'Allowed' : 'Blocked')}

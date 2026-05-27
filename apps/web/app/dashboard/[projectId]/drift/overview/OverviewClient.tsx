@@ -74,14 +74,14 @@ export default function OverviewClient({
     <div className="max-w-6xl mx-auto p-8 space-y-8">
       <BackButton />
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Drift Overview</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Drift scores and recent events across all environments</p>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Drift Overview</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Drift scores and recent events across all environments</p>
       </div>
 
       {/* Score cards */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-gray-900">Environments</h2>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">Environments</h2>
           <Link
             href={`/dashboard/${projectId}/drift/environments`}
             className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
@@ -90,8 +90,8 @@ export default function OverviewClient({
           </Link>
         </div>
         {environments.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center">
-            <p className="text-sm text-gray-500">No environments yet. Send a snapshot from the agent to get started.</p>
+          <div className="rounded-xl border border-dashed border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-10 text-center">
+            <p className="text-sm text-gray-500 dark:text-slate-400">No environments yet. Send a snapshot from the agent to get started.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -101,7 +101,7 @@ export default function OverviewClient({
                 className={`rounded-xl border p-5 shadow-sm ${scoreBgClasses(env.driftScore)}`}
               >
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900">{env.name}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{env.name}</p>
                   {env.isBaseline && (
                     <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
                       baseline
@@ -112,10 +112,10 @@ export default function OverviewClient({
                   {env.driftScore}
                 </p>
                 <ScoreBar score={env.driftScore} />
-                <p className="mt-2 text-xs text-gray-600">
+                <p className="mt-2 text-xs text-gray-600 dark:text-slate-400">
                   {driftedCountByEnv[env.id] ?? 0} keys drifted
                 </p>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                   Last snapshot: {mounted ? relativeTime(env.lastSeenAt) : '—'}
                 </p>
               </div>
@@ -127,7 +127,7 @@ export default function OverviewClient({
       {/* Recent events */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-gray-900">Recent Unresolved Events</h2>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">Recent Unresolved Events</h2>
           <Link
             href={`/dashboard/${projectId}/drift/events`}
             className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
@@ -135,9 +135,9 @@ export default function OverviewClient({
             View all events →
           </Link>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
           {events.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-500">No unresolved drift events.</div>
+            <div className="p-8 text-center text-sm text-gray-500 dark:text-slate-400">No unresolved drift events.</div>
           ) : (
             <ul className="divide-y divide-gray-100">
               {events.slice(0, RECENT_LIMIT).map((ev) => {
@@ -150,12 +150,12 @@ export default function OverviewClient({
                       {icon.glyph}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-mono text-xs text-gray-900 truncate">{ev.keyName}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="font-mono text-xs text-gray-900 dark:text-slate-100 truncate">{ev.keyName}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                         {icon.label} • {ev.environmentName}
                       </p>
                     </div>
-                    <span className="text-xs text-gray-500">{mounted ? relativeTime(ev.detectedAt) : '—'}</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">{mounted ? relativeTime(ev.detectedAt) : '—'}</span>
                   </li>
                 )
               })}
@@ -173,7 +173,7 @@ export default function OverviewClient({
         </Link>
         <Link
           href={`/dashboard/${projectId}/drift/keys`}
-          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-100 hover:bg-gray-50"
         >
           Manage keys
         </Link>
@@ -186,7 +186,7 @@ function ScoreBar({ score }: { score: number }) {
   const clamped = Math.max(0, Math.min(100, score))
   const color = clamped >= 90 ? 'bg-emerald-500' : clamped >= 70 ? 'bg-amber-500' : 'bg-red-500'
   return (
-    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200/70">
+    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200/70 dark:bg-slate-700">
       <div className={`h-full ${color} transition-all`} style={{ width: `${clamped}%` }} />
     </div>
   )

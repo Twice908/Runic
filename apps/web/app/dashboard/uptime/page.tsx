@@ -84,12 +84,12 @@ function UptimeCard({ projectId, alert, onDisable, onEdit, disabling }: UptimeCa
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <StatusDot status={data.current} />
-          <span className="text-sm font-medium text-gray-900 truncate">{alert.url}</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">{alert.url}</span>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <span
@@ -101,14 +101,14 @@ function UptimeCard({ projectId, alert, onDisable, onEdit, disabling }: UptimeCa
           </span>
           <button
             onClick={() => onEdit(alert)}
-            className="text-xs text-gray-400 hover:text-indigo-600 transition-colors"
+            className="text-xs text-gray-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-slate-300 transition-colors"
           >
             Edit
           </button>
           <button
             onClick={() => onDisable(alert.id)}
             disabled={disabling === alert.id}
-            className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+            className="text-xs text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-slate-300 transition-colors disabled:opacity-50"
           >
             {disabling === alert.id ? 'Removing…' : 'Remove'}
           </button>
@@ -118,12 +118,12 @@ function UptimeCard({ projectId, alert, onDisable, onEdit, disabling }: UptimeCa
       {/* Metrics */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Uptime (24h)</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{data.uptimePercent24h.toFixed(1)}%</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wider font-medium">Uptime (24h)</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-1">{data.uptimePercent24h.toFixed(1)}%</p>
         </div>
         <div>
-          <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Avg Response</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
+          <p className="text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wider font-medium">Avg Response</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-1">
             {data.avgResponseTime24h > 0 ? `${data.avgResponseTime24h}ms` : '—'}
           </p>
         </div>
@@ -132,7 +132,7 @@ function UptimeCard({ projectId, alert, onDisable, onEdit, disabling }: UptimeCa
       {/* Timeline chart */}
       {data.checks.length > 0 && (
         <div>
-          <p className="text-xs text-gray-400 mb-2">Last 24h (hourly)</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mb-2">Last 24h (hourly)</p>
           <ResponsiveContainer width="100%" height={60}>
             <BarChart data={hourly} barSize={6} barCategoryGap="20%">
               <XAxis dataKey="hour" tick={false} axisLine={false} tickLine={false} />
@@ -198,14 +198,14 @@ function UptimeForm({ projectId, initial, onSaved, onCancel }: UptimeFormProps) 
     }
   }
 
-  const INPUT = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+  const INPUT = 'w-full rounded-lg border border-gray-300 dark:border-slate-500 bg-white dark:bg-slate-600 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
   return (
-    <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-6 space-y-4">
-      <h3 className="text-sm font-semibold text-gray-800">{initial ? 'Edit monitor' : 'Add URL to monitor'}</h3>
+    <div className="rounded-xl border border-indigo-200 dark:border-slate-600 bg-indigo-50/40 dark:bg-slate-700 p-6 space-y-4">
+      <h3 className="text-sm font-semibold text-gray-800 dark:text-slate-100">{initial ? 'Edit monitor' : 'Add URL to monitor'}</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">URL</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">URL</label>
           <input
             type="url"
             placeholder="https://api.example.com/health"
@@ -219,7 +219,7 @@ function UptimeForm({ projectId, initial, onSaved, onCancel }: UptimeFormProps) 
         {!initial && (
           <>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notification channel</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">Notification channel</label>
               <div className="flex gap-2">
                 {(['email', 'slack'] as AlertChannel[]).map((c) => (
                   <button
@@ -228,7 +228,7 @@ function UptimeForm({ projectId, initial, onSaved, onCancel }: UptimeFormProps) 
                     onClick={() => { setChannel(c); setDestination('') }}
                     className={[
                       'rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
-                      channel === c ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-indigo-300',
+                      channel === c ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 dark:border-slate-500 bg-white dark:bg-slate-600 text-gray-600 dark:text-slate-200 hover:border-indigo-300',
                     ].join(' ')}
                   >
                     {c === 'email' ? 'Email' : 'Slack'}
@@ -237,7 +237,7 @@ function UptimeForm({ projectId, initial, onSaved, onCancel }: UptimeFormProps) 
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
                 {channel === 'email' ? 'Email address' : 'Slack webhook URL'}
               </label>
               <input
@@ -254,7 +254,7 @@ function UptimeForm({ projectId, initial, onSaved, onCancel }: UptimeFormProps) 
 
         {initial && (
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Notification destination</label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">Notification destination</label>
             <input
               type="text"
               value={destination}
@@ -325,8 +325,8 @@ export default function UptimePage() {
     <div className="max-w-4xl mx-auto p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Uptime</h1>
-          <p className="text-sm text-gray-500 mt-0.5">HTTP uptime checks run every 60 seconds</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Uptime</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">HTTP uptime checks run every 60 seconds</p>
         </div>
         {!showAddForm && !editingAlert && (
           <button
@@ -362,9 +362,9 @@ export default function UptimePage() {
           ))}
         </div>
       ) : uptimeAlerts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-14 text-center">
-          <p className="text-sm font-medium text-gray-500">No uptime monitors configured</p>
-          <p className="text-xs text-gray-400 mt-1">
+        <div className="rounded-xl border border-dashed border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-14 text-center">
+          <p className="text-sm font-medium text-gray-500 dark:text-slate-400">No uptime monitors configured</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
             Click "Add URL to monitor" above to get started.
           </p>
         </div>

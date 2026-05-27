@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { LatencyBucket } from '@pulse/types'
+import ChartTooltip from './ChartTooltip'
 
 function formatLabel(bucket: string, range: string): string {
   const d = new Date(bucket)
@@ -62,8 +63,7 @@ export default function LatencyChart({ data, range, isLoading }: LatencyChartPro
           stroke="#e5e7eb"
         />
         <Tooltip
-          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-          formatter={(value) => [`${typeof value === 'number' ? value : 0} ms`]}
+          content={<ChartTooltip valueFormatter={(v) => `${v} ms`} />}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
         <Line

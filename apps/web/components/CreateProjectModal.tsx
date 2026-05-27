@@ -65,18 +65,18 @@ export default function CreateProjectModal({ onClose }: CreateProjectModalProps)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white shadow-xl">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl">
         {step === 'form' ? (
           <>
-            <div className="border-b border-gray-100 px-6 py-5">
-              <h2 className="text-xl font-semibold text-gray-900">Create a project</h2>
-              <p className="mt-1 text-sm text-gray-500">
+            <div className="border-b border-gray-100 dark:border-slate-700 px-6 py-5">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Create a project</h2>
+              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
                 Give your project a name. An API key will be generated for you.
               </p>
             </div>
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
                   Project name
                 </label>
                 <input
@@ -86,7 +86,7 @@ export default function CreateProjectModal({ onClose }: CreateProjectModalProps)
                   onChange={(e) => setName(e.target.value)}
                   placeholder="My API"
                   autoFocus
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
               </div>
@@ -94,7 +94,7 @@ export default function CreateProjectModal({ onClose }: CreateProjectModalProps)
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                  className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors duration-150"
                 >
                   Cancel
                 </button>
@@ -110,11 +110,11 @@ export default function CreateProjectModal({ onClose }: CreateProjectModalProps)
           </>
         ) : (
           <>
-            <div className="border-b border-gray-100 px-6 py-5">
-              <h2 className="text-xl font-semibold text-gray-900">
+            <div className="border-b border-gray-100 dark:border-slate-700 px-6 py-5">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
                 {createdProject?.name} created
               </h2>
-              <p className="mt-1 text-sm text-gray-500">Your project is ready to use.</p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">Your project is ready to use.</p>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3">
@@ -131,16 +131,16 @@ export default function CreateProjectModal({ onClose }: CreateProjectModalProps)
                 </p>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500">
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                   API Key
                 </label>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-xs text-gray-800">
+                  <code className="flex-1 overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 px-3 py-2 font-mono text-xs text-gray-800 dark:text-slate-100">
                     {createdProject?.apiKey}
                   </code>
                   <button
                     onClick={copyKey}
-                    className="flex-shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                    className="flex-shrink-0 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors duration-150"
                   >
                     {copied ? 'Copied!' : 'Copy'}
                   </button>

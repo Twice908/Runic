@@ -111,8 +111,8 @@ export default function KeysPage({ params }: KeysPageProps) {
     <div className="max-w-6xl mx-auto p-8 space-y-6">
       <BackButton />
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Keys</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Keys</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
           Add ownership, descriptions, and rotation policy. Ignored keys are excluded from drift detection.
         </p>
       </div>
@@ -123,16 +123,16 @@ export default function KeysPage({ params }: KeysPageProps) {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-sm text-gray-500">Loading keys…</div>
+          <div className="p-8 text-center text-sm text-gray-500 dark:text-slate-400">Loading keys…</div>
         ) : sorted.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-500">
+          <div className="p-8 text-center text-sm text-gray-500 dark:text-slate-400">
             No keys yet. Send a snapshot from the agent to populate this list.
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <thead className="bg-gray-50 dark:bg-slate-700 text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">
               <tr>
                 <th className="text-left px-4 py-2 w-56">Key</th>
                 <th className="text-left px-4 py-2 w-40">Owner</th>
@@ -143,7 +143,7 @@ export default function KeysPage({ params }: KeysPageProps) {
                 <th className="text-right px-4 py-2 w-24">Save</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
               {sorted.map((row) => {
                 const merged = { ...row, ...(edits[row.keyName] ?? {}) } as KeyRow
                 const isDirty = dirty(row.keyName)
@@ -151,14 +151,14 @@ export default function KeysPage({ params }: KeysPageProps) {
                   savedAt[row.keyName] && Date.now() - savedAt[row.keyName] < 2000
                 return (
                   <tr key={row.keyName} className="align-middle">
-                    <td className="px-4 py-2 font-mono text-xs text-gray-900">{row.keyName}</td>
+                    <td className="px-4 py-2 font-mono text-xs text-gray-900 dark:text-slate-100">{row.keyName}</td>
                     <td className="px-4 py-2">
                       <input
                         type="text"
                         value={merged.owner ?? ''}
                         onChange={(e) => setEdit(row.keyName, { owner: e.target.value })}
                         placeholder="—"
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-indigo-400 focus:outline-none"
+                        className="w-full rounded border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-2 py-1 text-xs focus:border-indigo-400 focus:outline-none"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -167,7 +167,7 @@ export default function KeysPage({ params }: KeysPageProps) {
                         value={merged.description ?? ''}
                         onChange={(e) => setEdit(row.keyName, { description: e.target.value })}
                         placeholder="—"
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-indigo-400 focus:outline-none"
+                        className="w-full rounded border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-2 py-1 text-xs focus:border-indigo-400 focus:outline-none"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -181,14 +181,14 @@ export default function KeysPage({ params }: KeysPageProps) {
                           })
                         }
                         placeholder="—"
-                        className="w-20 rounded border border-gray-200 px-2 py-1 text-xs focus:border-indigo-400 focus:outline-none"
+                        className="w-20 rounded border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-2 py-1 text-xs focus:border-indigo-400 focus:outline-none"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <RotationBadge daysOverdue={row.daysOverdue} />
                     </td>
                     <td className="px-4 py-2">
-                      <label className="flex items-center gap-2 text-xs text-gray-700">
+                      <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-slate-300">
                         <input
                           type="checkbox"
                           checked={merged.isIgnored ?? false}
@@ -207,7 +207,7 @@ export default function KeysPage({ params }: KeysPageProps) {
                             setEdit(row.keyName, { ignoreReason: e.target.value })
                           }
                           placeholder="reason"
-                          className="mt-1 w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-indigo-400 focus:outline-none"
+                          className="mt-1 w-full rounded border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-2 py-1 text-xs focus:border-indigo-400 focus:outline-none"
                         />
                       )}
                     </td>
@@ -239,7 +239,7 @@ export default function KeysPage({ params }: KeysPageProps) {
 }
 
 function RotationBadge({ daysOverdue }: { daysOverdue: number | null }) {
-  if (daysOverdue === null || daysOverdue === undefined) return <span className="text-xs text-gray-400">—</span>
+  if (daysOverdue === null || daysOverdue === undefined) return <span className="text-xs text-gray-400 dark:text-slate-500">—</span>
   if (daysOverdue === 0) {
     return (
       <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">

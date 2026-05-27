@@ -10,9 +10,11 @@ import { useVolumeData, useLatencyData, useTopRoutes } from '@/hooks/useAnalytic
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-gray-700">{title}</h3>
-      {children}
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+      <h3 className="mb-4 text-sm font-semibold text-gray-700 dark:text-slate-100">{title}</h3>
+      <div className="dark:[&_.recharts-wrapper]:bg-slate-800 dark:[&_.recharts-surface]:bg-slate-800">
+        {children}
+      </div>
     </div>
   )
 }
@@ -46,7 +48,7 @@ export default function AnalyticsPage() {
   return (
     <div className="max-w-7xl mx-auto p-8 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Analytics</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Analytics</h1>
         <TimeRangeSelector value={range} onChange={setRange} />
       </div>
 

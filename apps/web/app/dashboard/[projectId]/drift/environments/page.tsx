@@ -60,8 +60,8 @@ export default function DriftEnvironmentsPage({
     <div className="max-w-4xl mx-auto p-8 space-y-6">
       <BackButton />
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Environments</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Drift scores and baseline selection</p>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Environments</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Drift scores and baseline selection</p>
       </div>
 
       {error && (
@@ -70,17 +70,17 @@ export default function DriftEnvironmentsPage({
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-10 text-center text-sm text-gray-500">Loading environments…</div>
+          <div className="p-10 text-center text-sm text-gray-500 dark:text-slate-400">Loading environments…</div>
         ) : environments.length === 0 ? (
-          <div className="p-10 text-center text-sm text-gray-500">
+          <div className="p-10 text-center text-sm text-gray-500 dark:text-slate-400">
             No environments yet. Send a snapshot from the agent to get started.
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-gray-100 dark:divide-slate-700">
             {environments.map((env) => (
-              <li key={env.id} className="flex items-center gap-4 px-6 py-4">
+              <li key={env.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-slate-700">
                 <div className={`flex h-12 w-12 flex-col items-center justify-center rounded-lg border ${scoreBgClasses(env.driftScore)}`}>
                   <span className={`text-sm font-semibold ${scoreColorClasses(env.driftScore)}`}>
                     {env.driftScore}
@@ -88,14 +88,14 @@ export default function DriftEnvironmentsPage({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-sm text-gray-900">{env.name}</p>
+                    <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">{env.name}</p>
                     {env.isBaseline && (
-                      <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
+                      <span className="rounded bg-indigo-100 dark:bg-indigo-900/30 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300">
                         baseline
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                     Last snapshot: {relativeTime(env.lastSeenAt)}
                   </p>
                 </div>
@@ -103,7 +103,7 @@ export default function DriftEnvironmentsPage({
                   <button
                     onClick={() => setBaseline(env.name)}
                     disabled={pendingEnv === env.name}
-                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                    className="rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-transparent px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-slate-300 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50"
                   >
                     {pendingEnv === env.name ? 'Setting…' : 'Set as baseline'}
                   </button>

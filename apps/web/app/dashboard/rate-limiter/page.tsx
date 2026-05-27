@@ -12,10 +12,10 @@ import { relativeTime } from '@/lib/utils'
 
 function SkeletonCard() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
-      <div className="mt-4 h-8 w-20 animate-pulse rounded bg-gray-200" />
-      <div className="mt-2 h-3 w-32 animate-pulse rounded bg-gray-200" />
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+      <div className="h-3 w-24 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
+      <div className="mt-4 h-8 w-20 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
+      <div className="mt-2 h-3 w-32 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
     </div>
   )
 }
@@ -31,10 +31,10 @@ interface StatCardProps {
 
 function StatCard({ label, value, sub, valueColor = 'text-gray-900' }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</p>
-      <p className={`mt-2 text-3xl font-semibold ${valueColor}`}>{value}</p>
-      <p className="mt-1 text-sm text-gray-500">{sub}</p>
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">{label}</p>
+      <p className={`mt-2 text-3xl font-semibold ${valueColor} dark:text-slate-100`}>{value}</p>
+      <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{sub}</p>
     </div>
   )
 }
@@ -141,8 +141,8 @@ export default function RateLimiterOverviewPage() {
     <div className="max-w-7xl mx-auto p-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Rate Limiter Overview</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Summary of rate limiting activity for this project</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Rate Limiter Overview</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Summary of rate limiting activity for this project</p>
         </div>
         <button
           onClick={() => navigateTo('/dashboard/rate-limiter/rules/new')}
@@ -208,10 +208,10 @@ export default function RateLimiterOverviewPage() {
           <button
             key={tile.href + tile.title}
             onClick={() => navigateTo(tile.href)}
-            className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 text-left transition-colors hover:border-indigo-300 hover:shadow-md"
+            className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-5 text-left transition-colors hover:border-indigo-300 hover:shadow-md"
           >
-            <p className="font-semibold text-sm text-gray-900">{tile.title}</p>
-            <p className="text-xs text-gray-500 mt-1">{tile.desc}</p>
+            <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">{tile.title}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{tile.desc}</p>
             <p className="text-xs mt-3 font-medium text-indigo-600">{tile.cta}</p>
           </button>
         ))}
@@ -227,24 +227,24 @@ export default function RateLimiterOverviewPage() {
             <p className="text-sm text-gray-500">No blocked requests in the last 24 hours</p>
           </div>
         ) : (
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Key</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Rule</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Blocks</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Last Seen</th>
+                <tr className="border-b border-gray-100 dark:border-slate-700">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Key</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Rule</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Blocks</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Last Seen</th>
                 </tr>
               </thead>
               <tbody>
                 {topOffenders.map((offender, i) => (
                   <tr
                     key={`${offender.limitKey}-${offender.ruleId}`}
-                    className={`border-b border-gray-100 hover:bg-gray-50 ${i === topOffenders.length - 1 ? 'border-b-0' : ''}`}
+                    className={`border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 ${i === topOffenders.length - 1 ? 'border-b-0' : ''}`}
                   >
-                    <td className="px-6 py-3 font-mono text-xs text-gray-800 max-w-[200px] truncate">{offender.limitKey}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{offender.ruleName}</td>
+                    <td className="px-6 py-3 font-mono text-xs text-gray-800 dark:text-slate-100 max-w-[200px] truncate">{offender.limitKey}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600 dark:text-slate-400">{offender.ruleName}</td>
                     <td className="px-4 py-3 text-right font-semibold text-red-600">{offender.blockCount.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right text-xs text-gray-500">{relativeTime(offender.lastSeen)}</td>
                   </tr>
@@ -266,7 +266,7 @@ export default function RateLimiterOverviewPage() {
               <select
                 value={selectedRuleId}
                 onChange={(e) => selectRule(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">All Rules</option>
                 {rules.map((rule) => (
@@ -281,7 +281,7 @@ export default function RateLimiterOverviewPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+        <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4">
           {hitRateLoading ? (
             <div className="h-[300px] animate-pulse rounded-xl bg-gray-100" />
           ) : (

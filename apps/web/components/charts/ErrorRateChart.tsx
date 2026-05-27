@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { VolumeBucket } from '@pulse/types'
+import ChartTooltip from './ChartTooltip'
 
 function formatLabel(bucket: string, range: string): string {
   const d = new Date(bucket)
@@ -65,8 +66,7 @@ export default function ErrorRateChart({ data, range, isLoading }: ErrorRateChar
           stroke="#e5e7eb"
         />
         <Tooltip
-          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-          formatter={(value) => [`${typeof value === 'number' ? value : 0}%`, 'Error Rate']}
+          content={<ChartTooltip valueFormatter={(v) => `${v}%`} />}
         />
         <Area
           type="monotone"

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { apiFetch } from '@/lib/api'
 import RegenerateKeyModal from '@/components/RegenerateKeyModal'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import type { ProjectSummary } from '@pulse/types'
 
 export default function SettingsPage() {
@@ -92,10 +93,25 @@ export default function SettingsPage() {
     }
   }
 
+  const AppearanceSection = (
+    <section>
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-1">
+        Appearance
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+        Choose your preferred color theme. Persists across sessions.
+      </p>
+      <ThemeToggle />
+    </section>
+  )
+
   if (!projectId) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-gray-400">Select a project from the sidebar.</p>
+      <div className="max-w-2xl mx-auto p-8 space-y-8">
+        {AppearanceSection}
+        <div className="flex h-full items-center justify-center">
+          <p className="text-sm text-gray-400">Select a project from the sidebar.</p>
+        </div>
       </div>
     )
   }
@@ -103,6 +119,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto p-8 space-y-6">
+        {AppearanceSection}
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-32 animate-pulse rounded-xl bg-gray-100" />
         ))}
@@ -112,8 +129,8 @@ export default function SettingsPage() {
 
   if (!project) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-gray-400">Project not found.</p>
+      <div className="max-w-2xl mx-auto p-8 space-y-8">
+        {AppearanceSection}
       </div>
     )
   }
@@ -122,14 +139,15 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-8 space-y-8">
+      {AppearanceSection}
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{project.name}</p>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Settings</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">{project.name}</p>
       </div>
 
       {/* ── Project Name ─────────────────────────────────────────────────── */}
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-base font-semibold text-gray-900">Project Name</h2>
+      <section className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm space-y-4">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">Project Name</h2>
         <form onSubmit={handleRename} className="flex items-end gap-3">
           <div className="flex-1">
             <input
@@ -137,7 +155,7 @@ export default function SettingsPage() {
               value={nameValue}
               onChange={(e) => { setNameValue(e.target.value); setNameError('') }}
               maxLength={64}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             {nameError && <p className="mt-1 text-xs text-red-600">{nameError}</p>}
           </div>
@@ -152,13 +170,13 @@ export default function SettingsPage() {
       </section>
 
       {/* ── API Key ──────────────────────────────────────────────────────── */}
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-base font-semibold text-gray-900">API Key</h2>
-        <p className="text-sm text-gray-500">
+      <section className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm space-y-4">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">API Key</h2>
+        <p className="text-sm text-gray-500 dark:text-slate-400">
           Use this key in the Pulse SDK to send data from your backend.
         </p>
         <div className="flex items-center gap-3">
-          <code className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm text-gray-700 select-none">
+          <code className="flex-1 rounded-lg border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 px-3 py-2 font-mono text-sm text-gray-700 dark:text-slate-100 select-none">
             {maskedKey}
           </code>
           <button
@@ -168,38 +186,38 @@ export default function SettingsPage() {
             Regenerate
           </button>
         </div>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-400 dark:text-slate-500">
           The full key is never shown again after creation. Regenerating will invalidate the current key immediately.
         </p>
       </section>
 
       {/* ── Danger Zone ──────────────────────────────────────────────────── */}
-      <section className="rounded-xl border border-red-200 bg-white p-6 shadow-sm space-y-4">
+      <section className="rounded-xl border border-red-200 bg-white dark:bg-slate-800 p-6 shadow-sm space-y-4">
         <h2 className="text-base font-semibold text-red-700">Danger Zone</h2>
 
         {!showDeleteForm ? (
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800">Delete project</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-sm font-medium text-gray-800 dark:text-slate-200">Delete project</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                 Permanently deletes all logs, errors, alerts, and uptime data. This cannot be undone.
               </p>
             </div>
             <button
               onClick={() => setShowDeleteForm(true)}
-              className="flex-shrink-0 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              className="flex-shrink-0 rounded-lg border border-red-300 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
             >
               Delete project
             </button>
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-gray-700 dark:text-slate-300">
               This action <strong>cannot be undone</strong>. This will permanently delete the{' '}
               <strong>{project.name}</strong> project and all associated data.
             </p>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">
                 Type <strong>{project.name}</strong> to confirm
               </label>
               <input
@@ -207,14 +225,14 @@ export default function SettingsPage() {
                 value={deleteConfirmText}
                 onChange={(e) => { setDeleteConfirmText(e.target.value); setDeleteError('') }}
                 placeholder={project.name}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full rounded-lg border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
             {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
             <div className="flex gap-2">
               <button
                 onClick={() => { setShowDeleteForm(false); setDeleteConfirmText(''); setDeleteError('') }}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700"
               >
                 Cancel
               </button>
