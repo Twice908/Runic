@@ -3,7 +3,15 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import BackButton from '../BackButton'
-import type { DriftEnvironmentSummary, DriftEvent, DriftMatrixRow } from '../types'
+import type { DriftEnvironmentSummary, DriftEvent } from '../types'
+
+type DriftCellState = 'present' | 'missing' | 'extra' | 'stale'
+
+interface MatrixRow {
+  keyName: string
+  cells: Record<string, DriftCellState>
+}
+
 import { EVENT_ICONS, relativeTime, scoreBgClasses, scoreColorClasses } from '../utils'
 
 const POLL_INTERVAL_MS = 30_000
@@ -13,16 +21,19 @@ interface OverviewClientProps {
   projectId: string
   initialEnvironments: DriftEnvironmentSummary[]
   initialEvents: DriftEvent[]
+  initialRows?: MatrixRow[]
 }
 
 export default function OverviewClient({
   projectId,
   initialEnvironments,
   initialEvents,
+  initialRows,
 }: OverviewClientProps) {
   const [environments, setEnvironments] = useState(initialEnvironments)
   const [events, setEvents] = useState(initialEvents)
-  const [matrixRows, setMatrixRows] = useState<DriftMatrixRow[]>([])
+  const [rows, setRows] = useState<MatrixRow[]>(initialRows ?? [])
+  const [mounted, setMounted] = useState(false)
 
   const refresh = useCallback(async () => {
     const url = `/api/drift/events/${projectId}?resolved=false&limit=${RECENT_LIMIT}`
@@ -35,11 +46,13 @@ export default function OverviewClient({
     ])
     const envs = matrixRes?.data?.environments ?? matrixRes?.environments
     if (envs) setEnvironments(envs)
-    const rows = matrixRes?.data?.rows ?? matrixRes?.rows
-    if (rows) setMatrixRows(rows)
+    const r = matrixRes?.data?.rows ?? matrixRes?.rows
+    if (r) setRows(r)
     const evs = eventsRes?.data?.events ?? eventsRes?.events
     if (evs) setEvents(evs)
   }, [projectId])
+
+  useEffect(() => setMounted(true), [])
 
   useEffect(() => {
     void refresh()
@@ -49,17 +62,13 @@ export default function OverviewClient({
 
   const driftedCountByEnv = useMemo(() => {
     const counts: Record<string, number> = {}
-    for (const env of environments) counts[env.id] = 0
-    for (const row of matrixRows) {
-      for (const env of environments) {
-        const cell = row.cells[env.id]
-        if (cell === 'missing' || cell === 'extra' || cell === 'stale') {
-          counts[env.id] = (counts[env.id] ?? 0) + 1
-        }
-      }
+    for (const env of environments) {
+      counts[env.id] = rows.filter(
+        (row) => row.cells[env.name] && row.cells[env.name] !== 'present',
+      ).length
     }
     return counts
-  }, [matrixRows, environments])
+  }, [rows, environments])
 
   return (
     <div className="max-w-6xl mx-auto p-8 space-y-8">
@@ -107,7 +116,7 @@ export default function OverviewClient({
                   {driftedCountByEnv[env.id] ?? 0} keys drifted
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
-                  Last snapshot: {relativeTime(env.lastSeenAt)}
+                  Last snapshot: {mounted ? relativeTime(env.lastSeenAt) : '—'}
                 </p>
               </div>
             ))}
@@ -146,7 +155,7 @@ export default function OverviewClient({
                         {icon.label} • {ev.environmentName}
                       </p>
                     </div>
-                    <span className="text-xs text-gray-500">{relativeTime(ev.detectedAt)}</span>
+                    <span className="text-xs text-gray-500">{mounted ? relativeTime(ev.detectedAt) : '—'}</span>
                   </li>
                 )
               })}

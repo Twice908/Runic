@@ -22,6 +22,7 @@ export default async function DriftOverviewPage({
       projectId={projectId}
       initialEnvironments={matrix?.environments ?? []}
       initialEvents={events?.events ?? []}
+      initialRows={matrix?.rows ?? []}
     />
   )
 }
