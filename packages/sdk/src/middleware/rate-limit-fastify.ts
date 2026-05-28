@@ -40,12 +40,13 @@ async function rateLimitPluginImpl(
       if (!outcome.allowed) {
         reply.headers({
           'Retry-After': String(outcome.retryAfter ?? 60),
-          [`${prefix}-Limit`]: String(outcome.meta?.limit ?? 0),
-          [`${prefix}-Remaining`]: '0',
-          [`${prefix}-Reset`]: String(outcome.meta?.resetAt ?? 0),
+          'X-RateLimit-Limit': String(outcome.meta?.limit ?? 0),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(outcome.meta?.resetAt ?? 0),
         })
         reply.status(429).send({
           error: 'Too Many Requests',
+          message: 'Rate limit exceeded. Try again later.',
           retryAfter: outcome.retryAfter ?? 60,
         })
         return

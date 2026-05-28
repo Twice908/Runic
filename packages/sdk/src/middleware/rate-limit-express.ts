@@ -44,11 +44,12 @@ export function rateLimit(options: RateLimitOptions): RequestHandler {
 
       if (!outcome.allowed) {
         res.set('Retry-After', String(outcome.retryAfter ?? 60))
-        res.set(`${prefix}-Limit`, String(outcome.meta?.limit ?? 0))
-        res.set(`${prefix}-Remaining`, '0')
-        res.set(`${prefix}-Reset`, String(outcome.meta?.resetAt ?? 0))
+        res.set('X-RateLimit-Limit', String(outcome.meta?.limit ?? 0))
+        res.set('X-RateLimit-Remaining', '0')
+        res.set('X-RateLimit-Reset', String(outcome.meta?.resetAt ?? 0))
         res.status(429).json({
           error: 'Too Many Requests',
+          message: 'Rate limit exceeded. Try again later.',
           retryAfter: outcome.retryAfter ?? 60,
         })
         return
