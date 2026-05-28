@@ -12,5 +12,5 @@ export async function PATCH(
   const token = await getToken()
   if (!token) return NextResponse.json({ error: 'No session token' }, { status: 401 })
 
-  return proxyToApi(`/projects/${params.id}/errors/${params.errorId}/resolve`, token, { method: 'PATCH' })
+  return proxyToApi(`/projects/${params.id}/errors/${params.errorId}/resolve`, token, { method: 'PATCH', body: JSON.stringify({}) })
 }

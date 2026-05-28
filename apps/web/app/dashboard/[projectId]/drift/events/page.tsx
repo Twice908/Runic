@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import BackButton from '../BackButton'
 import type { DriftEvent, DriftEventType } from '../types'
 import { EVENT_ICONS, relativeTime } from '../utils'
@@ -34,6 +34,7 @@ export default function DriftEventsPage({
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [environments, setEnvironments] = useState<string[]>([])
 
   const [envFilter, setEnvFilter] = useState<EnvFilter>('all')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
@@ -72,6 +73,23 @@ export default function DriftEventsPage({
     return () => clearInterval(id)
   }, [loadFresh])
 
+  useEffect(() => {
+    let cancelled = false
+    async function loadEnvironments(): Promise<void> {
+      const res = await fetch(`/api/drift/matrix/${projectId}`).catch(() => null)
+      if (!res || !res.ok) return
+      const json = await res.json().catch(() => null)
+      const envs: Array<{ name: string }> =
+        json?.data?.environments ?? json?.environments ?? []
+      const names = envs.map((e) => e.name).filter(Boolean).sort()
+      if (!cancelled) setEnvironments(names)
+    }
+    loadEnvironments()
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
+
   async function loadMore() {
     if (!nextCursor) return
     setLoadingMore(true)
@@ -84,12 +102,6 @@ export default function DriftEventsPage({
     }
     setLoadingMore(false)
   }
-
-  const environments = useMemo(() => {
-    const set = new Set<string>()
-    for (const ev of events) set.add(ev.environmentName)
-    return Array.from(set).sort()
-  }, [events])
 
   return (
     <div className="max-w-5xl mx-auto p-8 space-y-6">

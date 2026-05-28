@@ -9,5 +9,8 @@ export async function PUT(
   const { userId } = auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  return proxyToRateLimiter(`/v1/rules/${params.ruleId}/toggle`, { method: 'PUT' })
+  return proxyToRateLimiter(`/v1/rules/${params.ruleId}/toggle`, {
+    method: 'PUT',
+    body: JSON.stringify({}),
+  })
 }

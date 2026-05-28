@@ -90,7 +90,16 @@ function AlertCard({ alert, projectId, onToggle, onDelete, deleting, toggling }:
     setTesting(true)
     setTestResult(null)
     try {
-      const res = await fetch(`/api/projects/${projectId}/alerts/${alert.id}/test`, { method: 'POST' })
+      const url = `/api/projects/${projectId}/alerts/${alert.id}/test`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: alert.type,
+          channel: alert.channel,
+          destination: alert.destination,
+        }),
+      })
       const json = (await res.json()) as { success?: boolean; error?: { message?: string } }
       if (res.ok && json.success) {
         setTestResult('sent')
