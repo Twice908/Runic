@@ -11,7 +11,7 @@ interface StatsCardsProps {
 
 function SkeletonCard() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
       <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
       <div className="mt-4 h-8 w-20 animate-pulse rounded bg-gray-200" />
       <div className="mt-2 h-3 w-32 animate-pulse rounded bg-gray-200" />
@@ -26,12 +26,12 @@ interface StatCardProps {
   valueColor?: string
 }
 
-function StatCard({ label, value, sub, valueColor = 'text-gray-900' }: StatCardProps) {
+function StatCard({ label, value, sub, valueColor = 'text-gray-900 dark:text-slate-100' }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</p>
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">{label}</p>
       <p className={`mt-2 text-3xl font-semibold ${valueColor}`}>{value}</p>
-      <p className="mt-1 text-sm text-gray-500">{sub}</p>
+      <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{sub}</p>
     </div>
   )
 }
@@ -61,14 +61,14 @@ export default function StatsCards({ projectId }: StatsCardsProps) {
   }
 
   const errorRateColor =
-    stats.errorRate > 5 ? 'text-red-600' : stats.errorRate > 1 ? 'text-yellow-600' : 'text-gray-900'
+    stats.errorRate > 5 ? 'text-red-600' : stats.errorRate > 1 ? 'text-yellow-600' : 'text-gray-900 dark:text-slate-100'
 
   const avgRtColor =
     stats.avgResponseTime > 1000
       ? 'text-red-600'
       : stats.avgResponseTime > 500
         ? 'text-yellow-600'
-        : 'text-gray-900'
+        : 'text-gray-900 dark:text-slate-100'
 
   return (
     <div className="grid grid-cols-4 gap-6">
@@ -93,7 +93,7 @@ export default function StatsCards({ projectId }: StatsCardsProps) {
         label="Active Errors"
         value={stats.activeErrors.toLocaleString()}
         sub="Distinct error types"
-        valueColor={stats.activeErrors > 0 ? 'text-red-600' : 'text-gray-900'}
+        valueColor={stats.activeErrors > 0 ? 'text-red-600' : 'text-gray-900 dark:text-slate-100'}
       />
     </div>
   )

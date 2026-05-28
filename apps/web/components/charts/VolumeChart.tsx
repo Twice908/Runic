@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { VolumeBucket } from '@pulse/types'
+import ChartTooltip from './ChartTooltip'
 
 function formatLabel(bucket: string, range: string): string {
   const d = new Date(bucket)
@@ -67,11 +68,9 @@ export default function VolumeChart({ data, range, isLoading }: VolumeChartProps
         <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#9ca3af' }} stroke="#e5e7eb" />
         <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} stroke="#e5e7eb" />
         <Tooltip
-          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-          formatter={(value, name) => [
-            typeof value === 'number' ? value.toLocaleString() : String(value),
-            name === 'count' ? 'Requests' : 'Errors',
-          ]}
+          content={<ChartTooltip
+            valueFormatter={(v, name) => `${v.toLocaleString()} ${name === 'count' ? 'requests' : 'errors'}`}
+          />}
         />
         <Legend
           formatter={(value) => (value === 'count' ? 'Requests' : 'Errors')}

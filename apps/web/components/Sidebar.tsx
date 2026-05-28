@@ -8,7 +8,13 @@ interface SidebarProps {
   projects: ProjectSummary[]
 }
 
-const NAV_ITEMS = [
+// `pathTemplate` items have :projectId substituted into the URL path rather
+// than passed as a `?project=` query param. Used for routes that live under
+// `app/dashboard/[projectId]/...`.
+const NAV_ITEMS: Array<
+  | { label: string; href: string; pathTemplate?: undefined }
+  | { label: string; href?: undefined; pathTemplate: string }
+> = [
   { label: 'Overview', href: '/dashboard' },
   { label: 'Live Logs', href: '/dashboard/logs' },
   { label: 'Analytics', href: '/dashboard/analytics' },
@@ -16,6 +22,7 @@ const NAV_ITEMS = [
   { label: 'Alerts', href: '/dashboard/alerts' },
   { label: 'Uptime', href: '/dashboard/uptime' },
   { label: 'Rate Limiter', href: '/dashboard/rate-limiter' },
+  { label: 'Drift', pathTemplate: '/dashboard/:projectId/drift/overview' },
   { label: 'Settings', href: '/dashboard/settings' },
 ]
 
@@ -29,6 +36,11 @@ export default function Sidebar({ projects }: SidebarProps) {
     const params = new URLSearchParams()
     if (selectedProjectId) params.set('project', selectedProjectId)
     router.push(`${href}?${params.toString()}`)
+  }
+
+  function navigateTemplate(pathTemplate: string) {
+    if (!selectedProjectId) return
+    router.push(pathTemplate.replace(':projectId', selectedProjectId))
   }
 
   function selectProject(id: string) {
@@ -73,14 +85,22 @@ export default function Sidebar({ projects }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {NAV_ITEMS.map((item) => {
-          const isActive =
-            item.href === '/dashboard'
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(item.href + '/')
+          const key = item.href ?? item.pathTemplate
+          let isActive: boolean
+          if (item.pathTemplate) {
+            const driftPrefix = item.pathTemplate.split('/:projectId/')[1]?.split('/')[0]
+            isActive = Boolean(driftPrefix && pathname.includes(`/${driftPrefix}`))
+          } else if (item.href === '/dashboard') {
+            isActive = pathname === item.href
+          } else {
+            isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          }
           return (
             <button
-              key={item.href}
-              onClick={() => navigate(item.href)}
+              key={key}
+              onClick={() =>
+                item.pathTemplate ? navigateTemplate(item.pathTemplate) : navigate(item.href)
+              }
               className={[
                 'flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150',
                 isActive

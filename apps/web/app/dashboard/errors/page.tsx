@@ -55,7 +55,7 @@ function ErrorCard({ error, projectId, view, onResolved }: ErrorCardProps) {
   return (
     <div
       className={[
-        'rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md',
+        'rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm transition-shadow hover:shadow-md',
         dimmed ? 'opacity-50' : '',
       ].join(' ')}
     >
@@ -66,14 +66,14 @@ function ErrorCard({ error, projectId, view, onResolved }: ErrorCardProps) {
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-900">
+              <p className="truncate text-sm font-medium text-gray-900 dark:text-slate-100">
                 {error.message.slice(0, 120)}{error.message.length > 120 ? '…' : ''}
               </p>
-              <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-500">
+              <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400">
                 <span className={`rounded-full px-2 py-0.5 font-medium ${statusBadgeColor(error.statusCode)}`}>
                   {error.statusCode}
                 </span>
-                <span className="font-mono text-gray-600">{error.route}</span>
+                <span className="font-mono text-gray-600 dark:text-slate-400">{error.route}</span>
                 {error.resolved && (
                   <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                     Resolved
@@ -81,8 +81,8 @@ function ErrorCard({ error, projectId, view, onResolved }: ErrorCardProps) {
                 )}
               </div>
             </div>
-            <div className="flex-shrink-0 text-right text-xs text-gray-400">
-              <p className="font-medium text-gray-700">{error.count.toLocaleString()}×</p>
+            <div className="flex-shrink-0 text-right text-xs text-gray-400 dark:text-slate-400">
+              <p className="font-medium text-gray-700 dark:text-slate-300">{error.count.toLocaleString()}×</p>
               <p className="mt-0.5">last {relativeTime(error.lastSeen)}</p>
               {error.stack && (
                 <p className="mt-1 text-indigo-500">{expanded ? 'hide' : 'details'}</p>
@@ -97,7 +97,7 @@ function ErrorCard({ error, projectId, view, onResolved }: ErrorCardProps) {
             <button
               onClick={handleUnresolve}
               disabled={actioning}
-              className="text-xs text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50 whitespace-nowrap"
+              className="text-xs text-gray-400 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-slate-200 transition-colors disabled:opacity-50 whitespace-nowrap"
             >
               {actioning ? 'Reopening…' : 'Reopen'}
             </button>
@@ -105,7 +105,7 @@ function ErrorCard({ error, projectId, view, onResolved }: ErrorCardProps) {
             <button
               onClick={handleResolve}
               disabled={actioning}
-              className="text-xs text-gray-400 hover:text-green-600 transition-colors disabled:opacity-50 whitespace-nowrap"
+              className="text-xs text-gray-400 dark:text-slate-400 hover:text-green-600 dark:hover:text-slate-200 transition-colors disabled:opacity-50 whitespace-nowrap"
             >
               {actioning ? 'Resolving…' : 'Mark resolved'}
             </button>
@@ -114,7 +114,7 @@ function ErrorCard({ error, projectId, view, onResolved }: ErrorCardProps) {
       </div>
 
       {expanded && error.stack && (
-        <div className="border-t border-gray-100 px-5 py-4">
+        <div className="border-t border-gray-100 dark:border-slate-700 px-5 py-4">
           <pre className="overflow-x-auto rounded-lg bg-gray-950 p-4 text-xs leading-relaxed text-gray-300">
             {error.stack}
           </pre>
@@ -161,7 +161,7 @@ export default function ErrorsPage() {
     <div className="max-w-4xl mx-auto p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Errors</h1>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Errors</h1>
           {!isLoading && (
             <p className="mt-0.5 text-sm text-gray-400">
               {errors.length === 0 ? 'No errors' : `${errors.length} error group${errors.length === 1 ? '' : 's'}`}
@@ -172,16 +172,16 @@ export default function ErrorsPage() {
       </div>
 
       {/* View toggle */}
-      <div className="flex rounded-lg border border-gray-200 overflow-hidden w-fit">
+      <div className="flex rounded-lg border border-gray-200 dark:border-slate-700 dark:bg-slate-800 overflow-hidden w-fit">
         {VIEW_TABS.map((tab) => (
           <button
             key={tab.value}
             onClick={() => setParam('view', tab.value)}
             className={[
-              'px-4 py-2 text-sm font-medium transition-colors border-r border-gray-200 last:border-r-0',
+              'px-4 py-2 text-sm font-medium transition-colors border-r border-gray-200 dark:border-slate-700 last:border-r-0',
               view === tab.value
                 ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50',
+                : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700',
             ].join(' ')}
           >
             {tab.label}

@@ -140,11 +140,17 @@ PULSE_DRIFT_ENV=production
 
 **D-1:** Prisma models + migrate → drift queue → `apps/drift-detector` scaffold → `POST /v1/snapshot` → diff worker (missing/extra only, no stale yet) → `packages/sdk-drift` → `pulse-drift snapshot` CLI
 
-**D-2:** `GET /v1/matrix` + Redis cache → matrix page (RSC) → events page → overview page → environments page → sidebar nav item
+**D-1:** ✅ Complete — apps/drift-detector (port 3003), packages/sdk-drift, migration add_drift applied
+
+**D-2:** ✅ Complete — matrix route, events/overview/environments/matrix pages, sidebar nav, Next.js proxy routes
 
 **D-3:** keys routes → key metadata editor page → stale rotation in worker → alert integration → DriftScore on overview
 
+**D-3:** ✅ Complete — keys routes, PATCH metadata, stale rotation in worker, alert integration, keys editor page, DriftScore display
+
 **D-4:** `GET /v1/ci-check` → `pulse-drift ci-check` CLI → GitHub Action → settings page with CI snippets
+
+**D-4:** ✅ Complete — ci-check route, pulse-drift ci-check CLI, GitHub Action stub, settings page with CI snippets
 
 ---
 

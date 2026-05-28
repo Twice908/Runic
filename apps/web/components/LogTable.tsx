@@ -73,11 +73,11 @@ export default function LogTable({ projectId }: LogTableProps) {
   const end = Math.min(page * 50, total)
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
       {/* Header + filter bar */}
-      <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-        <h2 className="text-sm font-semibold text-gray-900">Request Logs</h2>
-        <div className="flex gap-1 rounded-lg border border-gray-200 p-1">
+      <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 px-6 py-4">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-slate-100">Request Logs</h2>
+        <div className="flex gap-1 rounded-lg border border-gray-200 dark:border-slate-700 p-1">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f}
@@ -86,7 +86,7 @@ export default function LogTable({ projectId }: LogTableProps) {
                 'rounded-md px-3 py-1 text-xs font-medium transition-colors duration-150',
                 statusFilter === f
                   ? 'bg-indigo-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100',
+                  : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700',
               ].join(' ')}
             >
               {f === 'all' ? 'All' : f}
@@ -99,20 +99,20 @@ export default function LogTable({ projectId }: LogTableProps) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-100">
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <tr className="border-b border-gray-100 dark:border-slate-700">
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                 Timestamp
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                 Method
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                 Route
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                 Status
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
                 Response Time
               </th>
             </tr>
@@ -120,14 +120,14 @@ export default function LogTable({ projectId }: LogTableProps) {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
+                <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400 dark:text-slate-500">
                   Loading...
                 </td>
               </tr>
             )}
             {!loading && logs.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
+                <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400 dark:text-slate-500">
                   No requests found.
                 </td>
               </tr>
@@ -138,9 +138,9 @@ export default function LogTable({ projectId }: LogTableProps) {
                 return (
                   <tr
                     key={log.id}
-                    className="border-b border-gray-100 transition-colors duration-150 hover:bg-gray-50"
+                    className="border-b border-gray-100 dark:border-slate-700 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-slate-700"
                   >
-                    <td className="px-6 py-3 text-gray-500 text-xs">
+                    <td className="px-6 py-3 text-gray-500 dark:text-slate-400 text-xs">
                       {relativeTime(log.timestamp)}
                     </td>
                     <td className="px-4 py-3">
@@ -150,7 +150,7 @@ export default function LogTable({ projectId }: LogTableProps) {
                         {log.method}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-sm text-gray-800">{log.route}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-slate-100">{log.route}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[cat]}`}
@@ -172,22 +172,22 @@ export default function LogTable({ projectId }: LogTableProps) {
 
       {/* Pagination */}
       {!loading && total > 0 && (
-        <div className="flex items-center justify-between border-t border-gray-100 px-6 py-3">
-          <p className="text-xs text-gray-500">
+        <div className="flex items-center justify-between border-t border-gray-100 dark:border-slate-700 px-6 py-3">
+          <p className="text-xs text-gray-500 dark:text-slate-400">
             Showing {start}–{end} of {total.toLocaleString()} requests
           </p>
           <div className="flex gap-2">
             <button
               onClick={() => setPage((p) => p - 1)}
               disabled={page === 1}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors duration-150"
+              className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-slate-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors duration-150"
             >
               Previous
             </button>
             <button
               onClick={() => setPage((p) => p + 1)}
               disabled={!hasMore}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors duration-150"
+              className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-slate-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors duration-150"
             >
               Next
             </button>

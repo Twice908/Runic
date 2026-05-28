@@ -35,7 +35,7 @@ function FieldError({ msg }: { msg?: string }) {
 }
 
 const INPUT_BASE =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+  'w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500'
 const INPUT_ERROR =
   'w-full rounded-lg border border-red-400 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400'
 
@@ -110,7 +110,7 @@ export default function RuleForm({ initialValues, onValidSubmit, onCancel, submi
 
       {/* Name */}
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">
+        <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
           Rule name <span className="text-red-500">*</span>
         </label>
         <input
@@ -125,7 +125,7 @@ export default function RuleForm({ initialValues, onValidSubmit, onCancel, submi
 
       {/* Path pattern */}
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">
+        <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
           Path pattern (glob) <span className="text-red-500">*</span>
         </label>
         <input
@@ -135,10 +135,10 @@ export default function RuleForm({ initialValues, onValidSubmit, onCancel, submi
           onChange={(e) => setPathPattern(e.target.value)}
           className={`${errors.pathPattern ? INPUT_ERROR : INPUT_BASE} font-mono`}
         />
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
           Supports glob syntax:{' '}
-          <code className="font-mono bg-gray-100 px-1 rounded">/api/**</code>,{' '}
-          <code className="font-mono bg-gray-100 px-1 rounded">/api/auth/*</code>
+          <code className="font-mono bg-gray-100 dark:bg-slate-600 px-1 rounded">/api/**</code>,{' '}
+          <code className="font-mono bg-gray-100 dark:bg-slate-600 px-1 rounded">/api/auth/*</code>
         </p>
         <FieldError msg={errors.pathPattern} />
       </div>
@@ -146,7 +146,7 @@ export default function RuleForm({ initialValues, onValidSubmit, onCancel, submi
       {/* Limit + window */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
+          <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
             Request limit <span className="text-red-500">*</span>
           </label>
           <input
@@ -160,7 +160,7 @@ export default function RuleForm({ initialValues, onValidSubmit, onCancel, submi
           <FieldError msg={errors.limitCount} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
+          <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
             Time window <span className="text-red-500">*</span>
           </label>
           <select
@@ -184,7 +184,7 @@ export default function RuleForm({ initialValues, onValidSubmit, onCancel, submi
 
       {/* Limit key */}
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">
+        <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
           Rate limit key <span className="text-red-500">*</span>
         </label>
         <div className="grid grid-cols-4 gap-2">
@@ -197,14 +197,14 @@ export default function RuleForm({ initialValues, onValidSubmit, onCancel, submi
                 'rounded-lg border px-3 py-2 text-xs font-medium transition-colors',
                 limitKey === k
                   ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                  : 'border-gray-200 text-gray-600 hover:border-indigo-300',
+                  : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-600 dark:text-slate-200 hover:border-indigo-300',
               ].join(' ')}
             >
               {k === 'ip' ? 'IP Address' : k === 'apiKey' ? 'API Key' : k === 'userId' ? 'User ID' : 'Global'}
             </button>
           ))}
         </div>
-        <p className="mt-1.5 text-xs text-gray-400">
+        <p className="mt-1.5 text-xs text-gray-400 dark:text-slate-500">
           {limitKey === 'ip' && 'One counter per client IP address'}
           {limitKey === 'apiKey' && 'One counter per API key'}
           {limitKey === 'userId' && 'One counter per user ID (X-User-Id header)'}
@@ -214,7 +214,7 @@ export default function RuleForm({ initialValues, onValidSubmit, onCancel, submi
 
       {/* Action */}
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">
+        <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
           Action when limit is reached <span className="text-red-500">*</span>
         </label>
         <div className="flex gap-3">
@@ -230,22 +230,22 @@ export default function RuleForm({ initialValues, onValidSubmit, onCancel, submi
                 'flex-1 rounded-lg border p-3 text-left transition-colors',
                 action === opt.value
                   ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
-                  : 'border-gray-200 bg-white hover:border-indigo-300',
+                  : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:border-indigo-300',
               ].join(' ')}
             >
-              <p className="text-sm font-medium text-gray-800">{opt.label}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{opt.label}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{opt.desc}</p>
             </button>
           ))}
         </div>
       </div>
 
       {/* Buttons */}
-      <div className="flex justify-between pt-2 border-t border-gray-100">
+      <div className="flex justify-between pt-2 border-t border-gray-100 dark:border-slate-700">
         <button
           type="button"
           onClick={onCancel}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
         >
           Cancel
         </button>

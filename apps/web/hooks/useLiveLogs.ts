@@ -37,11 +37,14 @@ export function useLiveLogs(projectId: string, filter: LiveLogsFilter = {}) {
       const incoming = data.logs ?? []
 
       if (incoming.length > 0) {
+        const isFirstFetch = lastTimestampRef.current === null
         lastTimestampRef.current = incoming[0].timestamp
         const incomingIds = new Set(incoming.map((l) => l.id))
         setNewRowIds(incomingIds)
         setTimeout(() => setNewRowIds(new Set()), 1200)
         setLogs((prev) => {
+          // On first fetch after a filter change, replace stale data atomically
+          if (isFirstFetch) return incoming.slice(0, MAX_LOG_BUFFER)
           const existingIds = new Set(prev.map((l) => l.id))
           const fresh = incoming.filter((l) => !existingIds.has(l.id))
           if (fresh.length === 0) return prev
@@ -56,7 +59,6 @@ export function useLiveLogs(projectId: string, filter: LiveLogsFilter = {}) {
   useEffect(() => {
     const controller = new AbortController()
 
-    setLogs([])
     lastTimestampRef.current = null
     fetchNewLogs(controller.signal)
 

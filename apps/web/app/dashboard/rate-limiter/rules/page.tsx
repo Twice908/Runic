@@ -41,10 +41,10 @@ function EditModal({ rule, onClose, onSaved }: EditModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-xl mx-4">
-        <div className="border-b border-gray-100 px-6 py-5">
-          <h2 className="text-lg font-semibold text-gray-900">Edit Rule</h2>
-          <p className="mt-0.5 text-sm text-gray-500">Changes go live within 30 seconds.</p>
+      <div className="w-full max-w-lg rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl mx-4">
+        <div className="border-b border-gray-100 dark:border-slate-700 px-6 py-5">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Edit Rule</h2>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">Changes go live within 30 seconds.</p>
         </div>
         <div className="px-6 py-5">
           <RuleForm
@@ -91,15 +91,15 @@ function RuleRow({ rule, onToggle, onDelete, onEdit, toggling, deleting }: RuleR
   }
 
   return (
-    <tr className="border-b border-gray-100 transition-colors duration-150 hover:bg-gray-50">
+    <tr className="border-b border-gray-100 dark:border-slate-700 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-slate-700">
       {/* Name */}
-      <td className="px-6 py-3 text-sm font-medium text-gray-900">{rule.name}</td>
+      <td className="px-6 py-3 text-sm font-medium text-gray-900 dark:text-slate-100">{rule.name}</td>
 
       {/* Path pattern */}
-      <td className="px-4 py-3 font-mono text-sm text-gray-700">{rule.pathPattern}</td>
+      <td className="px-4 py-3 font-mono text-sm text-gray-700 dark:text-slate-400">{rule.pathPattern}</td>
 
       {/* Limit */}
-      <td className="px-4 py-3 text-sm text-gray-700">
+      <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-100">
         {rule.limitCount.toLocaleString()} / {windowLabel(rule.windowSecs)}
       </td>
 
@@ -155,13 +155,13 @@ function RuleRow({ rule, onToggle, onDelete, onEdit, toggling, deleting }: RuleR
           <span className="inline-flex items-center gap-3">
             <button
               onClick={() => onEdit(rule)}
-              className="text-xs text-gray-400 hover:text-indigo-600 transition-colors"
+              className="text-xs text-gray-400 dark:text-slate-500 hover:text-indigo-600 transition-colors"
             >
               Edit
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
-              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+              className="text-xs text-gray-400 dark:text-slate-500 hover:text-red-500 transition-colors"
             >
               Delete
             </button>
@@ -266,8 +266,8 @@ export default function RateLimiterRulesPage() {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Rate Limit Rules</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Protect your API endpoints from abuse</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Rate Limit Rules</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Protect your API endpoints from abuse</p>
         </div>
         <button
           onClick={navigateToNew}
@@ -281,18 +281,18 @@ export default function RateLimiterRulesPage() {
         <p className="mb-4 text-sm text-red-500">Failed to load rules: {error}</p>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Path Pattern</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Limit</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Key Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Action</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+              <tr className="border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-700">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Path Pattern</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Limit</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Key Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Status</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">Actions</th>
               </tr>
             </thead>
             <tbody>

@@ -66,41 +66,41 @@ export default function TopRoutesTable({ data, isLoading }: TopRoutesTableProps)
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-100 text-sm">
-        <thead className="bg-gray-50">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+      <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700 text-sm">
+        <thead className="bg-gray-50 dark:bg-slate-700">
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400">
               Route
             </th>
             {headers.map((h) => (
               <th
                 key={h.key}
-                className="cursor-pointer select-none px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 hover:text-gray-700 transition-colors"
+                className="cursor-pointer select-none px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
                 onClick={() => toggleSort(h.key)}
               >
                 {h.label}{' '}
-                <span className="text-gray-300">
+                <span className="text-gray-300 dark:text-slate-500">
                   {sortKey === h.key ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}
                 </span>
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
+        <tbody className="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
           {sorted.map((row, i) => (
-            <tr key={i} className="hover:bg-gray-50 transition-colors">
+            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <span className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs font-medium text-gray-600">
+                  <span className="rounded bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 font-mono text-xs font-medium text-gray-600 dark:text-slate-200">
                     {row.method}
                   </span>
-                  <span className="font-mono text-xs text-gray-800 truncate max-w-xs">
+                  <span className="font-mono text-xs text-gray-800 dark:text-slate-100 truncate max-w-xs">
                     {row.route}
                   </span>
                 </div>
               </td>
-              <td className="px-4 py-3 text-right font-mono text-xs text-gray-700">
+              <td className="px-4 py-3 text-right font-mono text-xs text-gray-700 dark:text-slate-400">
                 {row.requestCount.toLocaleString()}
               </td>
               <td className="px-4 py-3 text-right">

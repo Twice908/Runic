@@ -1,0 +1,25 @@
+{
+  "name": "@pulse/drift-agent",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "pulse-drift": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "commander": "12.0.0",
+    "dotenv": "16.4.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "20.0.0",
+    "typescript": "5.5.4",
+    "vitest": "2.0.0"
+  }
+}
