@@ -164,12 +164,83 @@ async function dispatchDriftAlerts(
   }
 }
 
+async function runStaleRotationCheck(
+  projectId: string,
+  environmentId: string,
+  envKeys: Set<string>,
+  baselineKeys: Set<string>,
+  openStaleIdByKey: Map<string, string>,
+  manifestCapturedAt: Date,
+  now: Date,
+): Promise<{ stalePerKey: Set<string>; newlyCreatedEvents: NewDriftEvent[] }> {
+  const stalePerKey = new Set<string>()
+  const newlyCreatedEvents: NewDriftEvent[] = []
+  const commonKeys = [...envKeys].filter((k) => baselineKeys.has(k))
+
+  if (commonKeys.length === 0) return { stalePerKey, newlyCreatedEvents }
+
+  const metas = await prisma.driftKeyMeta.findMany({
+    where: {
+      projectId,
+      keyName: { in: commonKeys },
+      OR: [{ environmentId: null }, { environmentId }],
+    },
+  })
+  const metaByKey = new Map<string, (typeof metas)[number]>()
+  for (const m of metas) {
+    const existing = metaByKey.get(m.keyName)
+    if (!existing || (existing.environmentId === null && m.environmentId !== null)) {
+      metaByKey.set(m.keyName, m)
+    }
+  }
+
+  for (const keyName of commonKeys) {
+    const meta = metaByKey.get(keyName)
+    if (!meta || meta.rotationDays === null) continue
+
+    if (meta.lastChangedAt === null) {
+      await prisma.driftKeyMeta.update({
+        where: { id: meta.id },
+        data: { lastChangedAt: manifestCapturedAt },
+      })
+    }
+
+    const referenceDate = meta.lastChangedAt ?? meta.firstSeenAt
+    if (referenceDate === null) continue
+    const daysSince = (Date.now() - referenceDate.getTime()) / MILLIS_PER_DAY
+    if (daysSince > meta.rotationDays) {
+      stalePerKey.add(keyName)
+      if (!openStaleIdByKey.has(keyName)) {
+        await prisma.driftEvent.create({
+          data: { projectId, environmentId, keyName, driftType: DriftEventType.STALE_ROTATION },
+        })
+        newlyCreatedEvents.push({
+          keyName,
+          driftType: DriftEventType.STALE_ROTATION,
+          rotationDays: meta.rotationDays,
+          daysSinceRotation: daysSince,
+        })
+      }
+    } else {
+      const openId = openStaleIdByKey.get(keyName)
+      if (openId) {
+        await prisma.driftEvent.update({
+          where: { id: openId },
+          data: { resolved: true, resolvedAt: now },
+        })
+      }
+    }
+  }
+
+  return { stalePerKey, newlyCreatedEvents }
+}
+
 export async function processDriftDiff(job: Job<DriftDiffJobData>): Promise<void> {
   const { manifestId, projectId, environmentId } = job.data
 
   const manifest = await prisma.driftManifest.findUnique({
     where: { id: manifestId },
-    select: { keys: true },
+    select: { keys: true, capturedAt: true },
   })
   if (!manifest) return
 
@@ -208,11 +279,33 @@ export async function processDriftDiff(job: Job<DriftDiffJobData>): Promise<void
         })
       }
     }
+    const baselineNow = new Date()
     await prisma.driftEnvironment.update({
       where: { id: environmentId },
-      data: { driftScore: 100, lastSeenAt: new Date() },
+      data: { driftScore: 100, lastSeenAt: baselineNow },
     })
+
+    // Run rotation check for the baseline env itself using its own keys
+    const baselineOpenStaleEvents = await prisma.driftEvent.findMany({
+      where: { environmentId, resolved: false, driftType: DriftEventType.STALE_ROTATION },
+      select: { id: true, keyName: true },
+    })
+    const baselineOpenStaleIdByKey = new Map<string, string>()
+    for (const e of baselineOpenStaleEvents) baselineOpenStaleIdByKey.set(e.keyName, e.id)
+
+    const baselineEnvKeys = new Set<string>(manifest.keys)
+    const { newlyCreatedEvents: baselineStaleEvents } = await runStaleRotationCheck(
+      projectId,
+      environmentId,
+      baselineEnvKeys,
+      baselineEnvKeys,
+      baselineOpenStaleIdByKey,
+      manifest.capturedAt,
+      baselineNow,
+    )
+
     await invalidateMatrixCache(projectId)
+    await dispatchDriftAlerts(projectId, environmentId, baselineStaleEvents)
     return
   }
 
@@ -301,61 +394,16 @@ export async function processDriftDiff(job: Job<DriftDiffJobData>): Promise<void
   }
 
   // ── PART 2: stale rotation detection ──────────────────────────────────────
-  // For keys present in BOTH env and baseline, check rotation policy from
-  // DriftKeyMeta (env-specific overrides global / environmentId=null).
-  const commonKeys = [...envKeys].filter((k) => baselineKeys.has(k))
-  const stalePerKey = new Set<string>()
-
-  if (commonKeys.length > 0) {
-    const metas = await prisma.driftKeyMeta.findMany({
-      where: {
-        projectId,
-        keyName: { in: commonKeys },
-        OR: [{ environmentId: null }, { environmentId }],
-      },
-    })
-    const metaByKey = new Map<string, (typeof metas)[number]>()
-    for (const m of metas) {
-      const existing = metaByKey.get(m.keyName)
-      if (!existing || (existing.environmentId === null && m.environmentId !== null)) {
-        metaByKey.set(m.keyName, m)
-      }
-    }
-
-    for (const keyName of commonKeys) {
-      const meta = metaByKey.get(keyName)
-      if (!meta || meta.rotationDays === null || meta.lastChangedAt === null) continue
-
-      const daysSince = (Date.now() - meta.lastChangedAt.getTime()) / MILLIS_PER_DAY
-      if (daysSince > meta.rotationDays) {
-        stalePerKey.add(keyName)
-        if (!openStaleIdByKey.has(keyName)) {
-          await prisma.driftEvent.create({
-            data: {
-              projectId,
-              environmentId,
-              keyName,
-              driftType: DriftEventType.STALE_ROTATION,
-            },
-          })
-          newlyCreatedEvents.push({
-            keyName,
-            driftType: DriftEventType.STALE_ROTATION,
-            rotationDays: meta.rotationDays,
-            daysSinceRotation: daysSince,
-          })
-        }
-      } else {
-        const openId = openStaleIdByKey.get(keyName)
-        if (openId) {
-          await prisma.driftEvent.update({
-            where: { id: openId },
-            data: { resolved: true, resolvedAt: now },
-          })
-        }
-      }
-    }
-  }
+  const { stalePerKey, newlyCreatedEvents: staleEvents } = await runStaleRotationCheck(
+    projectId,
+    environmentId,
+    envKeys,
+    baselineKeys,
+    openStaleIdByKey,
+    manifest.capturedAt,
+    now,
+  )
+  for (const e of staleEvents) newlyCreatedEvents.push(e)
 
   const score = clamp(
     100 - missingKeys.length * 10 - extraKeys.length * 5 - stalePerKey.size * 15,
