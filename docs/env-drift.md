@@ -164,3 +164,17 @@ PULSE_DRIFT_ENV=production
 | Enterprise | ∞ | Custom | Yes | Full+RBAC |
 
 Stripe meter: `drift_snapshots_monthly` — 1 event per successful `POST /v1/snapshot`.
+
+---
+
+## Known Issues
+
+All resolved as of 2026-05-28.
+
+| # | Where | Symptom | Root cause | Status |
+|---|---|---|---|---|
+| 1 | `apps/web/app/dashboard/errors/page.tsx` — `handleResolve` / `handleUnresolve` | "Mark as resolved" button did nothing | `res.ok` guard was already present; actual failure was the proxy route (see #3) forwarding a PATCH with `Content-Type: application/json` but no body, causing Fastify to return 400 | ✅ Resolved |
+| 2 | `apps/web/app/dashboard/alerts/page.tsx` — `handleTest` | "Send test" button returned HTTP 400 | `fetch` posted with no `body` and no `Content-Type`; server rejected the empty request | ✅ Resolved — added `Content-Type: application/json` + `body: JSON.stringify({ type, channel, destination })` |
+| 3 | `apps/web/app/api/projects/[id]/errors/[errorId]/resolve/route.ts` | PATCH proxy triggered `FST_ERR_CTP_EMPTY_JSON_BODY` in Fastify | `proxyToApi` always sends `Content-Type: application/json` but no body was passed, so Fastify received the header with an empty body | ✅ Resolved — added `body: JSON.stringify({})` to the `proxyToApi` call |
+| 4 | `apps/web/app/api/projects/[id]/alerts/[alertId]/test/route.ts` | Test-alert POST proxy returned 400 from Fastify | Same as #3 — `Content-Type: application/json` forwarded with no body; incoming `type / channel / destination` were never read from the request | ✅ Resolved — route now reads and forwards `{ type, channel, destination }` as JSON body |
+| 5 | `apps/web/app/dashboard/alerts/page.tsx` — `handleTest` | Stale debug `console.log` claimed "payload: none (no body sent)" after fix #2 was applied | Log was added during diagnosis and not removed when the fix landed | ✅ Resolved — log removed |
