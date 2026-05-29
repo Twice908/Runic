@@ -1,0 +1,199 @@
+import { Worker } from 'bullmq'
+import type { ConnectionOptions, Job } from 'bullmq'
+import pino from 'pino'
+import { prisma, Prisma } from '@pulse/db'
+
+const logger = pino({ name: 'agent-span-processor' })
+
+export type SpanType = 'llm_call' | 'tool_call' | 'memory_read' | 'agent_message' | 'error'
+
+export interface AgentSpanJobData {
+  type: 'span' | 'run_start' | 'run_end'
+  projectId: string
+  runId: string
+  spanId?: string
+  parentSpanId?: string
+  task?: string
+  agentName?: string
+  spanType?: SpanType
+  name?: string
+  model?: string
+  startedAt: string
+  endedAt?: string
+  inputTokens?: number
+  outputTokens?: number
+  costUsd?: number
+  inputPreview?: string
+  outputPreview?: string
+  status?: 'success' | 'error' | 'timeout' | 'completed' | 'failed' | 'interrupted'
+  errorMessage?: string
+  metadata?: Record<string, unknown>
+}
+
+// ── Handlers ─────────────────────────────────────────────────────────────────
+
+async function handleRunStart(data: AgentSpanJobData): Promise<void> {
+  const { runId, projectId, task, startedAt } = data
+
+  await prisma.agentRun.upsert({
+    where: { id: runId },
+    update: {},
+    create: {
+      id: runId,
+      projectId,
+      task: task ?? '',
+      status: 'running',
+      startedAt: new Date(startedAt),
+      totalTokens: 0,
+      totalCostUsd: 0,
+    },
+  })
+}
+
+async function handleSpan(data: AgentSpanJobData): Promise<void> {
+  const {
+    runId,
+    projectId,
+    spanId,
+    agentName,
+    spanType,
+    name,
+    startedAt,
+    endedAt,
+    inputTokens,
+    outputTokens,
+    costUsd,
+  } = data
+
+  if (!runId) {
+    logger.warn({ data }, 'Agent-span job missing runId — skipping span handler')
+    return
+  }
+
+  let agentDefinitionId: string | undefined
+
+  if (agentName) {
+    const agentDef = await prisma.agentDefinition.upsert({
+      where: { projectId_name: { projectId, name: agentName } },
+      update: {},
+      create: { projectId, name: agentName },
+    })
+    agentDefinitionId = agentDef.id
+  }
+
+  const startMs = new Date(startedAt).getTime()
+  const endMs = endedAt ? new Date(endedAt).getTime() : undefined
+  const durationMs = endMs !== undefined ? endMs - startMs : undefined
+  const spanTotalTokens = (inputTokens ?? 0) + (outputTokens ?? 0)
+  const hasTokens = inputTokens != null || outputTokens != null
+
+  await prisma.agentSpan.createMany({
+    data: [
+      {
+        id: spanId!,
+        runId,
+        projectId,
+        agentDefinitionId,
+        parentSpanId: data.parentSpanId,
+        spanType: spanType!,
+        name: name!,
+        startedAt: new Date(startedAt),
+        endedAt: endMs !== undefined ? new Date(endedAt!) : undefined,
+        durationMs,
+        inputTokens,
+        outputTokens,
+        totalTokens: hasTokens ? spanTotalTokens : undefined,
+        costUsd,
+        model: data.model,
+        inputPreview: data.inputPreview,
+        outputPreview: data.outputPreview,
+        statusCode: data.status,
+        errorMessage: data.errorMessage,
+        // Prisma accepts InputJsonValue for Json? fields; our type is a subset of that
+        metadata: (data.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
+      },
+    ],
+    skipDuplicates: true,
+  })
+
+  await prisma.agentRun.update({
+    where: { id: runId },
+    data: {
+      totalTokens: { increment: spanTotalTokens },
+      totalCostUsd: { increment: costUsd ?? 0 },
+    },
+  })
+}
+
+async function handleRunEnd(data: AgentSpanJobData): Promise<void> {
+  const { runId, endedAt, status } = data
+
+  const aggregate = await prisma.agentSpan.aggregate({
+    where: { runId },
+    _sum: { totalTokens: true, costUsd: true },
+  })
+
+  await prisma.agentRun.update({
+    where: { id: runId },
+    data: {
+      status: status ?? 'completed',
+      endedAt: endedAt ? new Date(endedAt) : new Date(),
+      totalTokens: aggregate._sum.totalTokens ?? 0,
+      totalCostUsd: aggregate._sum.costUsd ?? 0,
+    },
+  })
+}
+
+// ── Main dispatcher ───────────────────────────────────────────────────────────
+
+export async function processAgentSpan(job: Job<AgentSpanJobData>): Promise<void> {
+  const { type } = job.data
+
+  switch (type) {
+    case 'run_start':
+      await handleRunStart(job.data)
+      break
+    case 'span':
+      await handleSpan(job.data)
+      break
+    case 'run_end':
+      await handleRunEnd(job.data)
+      break
+    default:
+      logger.warn({ jobId: job.id, type }, 'Unknown agent-span job type — skipping')
+  }
+
+  logger.info({ jobId: job.id, type, projectId: job.data.projectId }, 'Processed agent-span job')
+}
+
+// ── Worker factory ────────────────────────────────────────────────────────────
+
+export function startAgentSpanWorker(connection: ConnectionOptions): Worker<AgentSpanJobData> {
+  const worker = new Worker<AgentSpanJobData>('agent-spans', processAgentSpan, {
+    connection,
+    concurrency: 10,
+  })
+
+  worker.on('completed', (job) => {
+    logger.debug({ jobId: job.id }, 'Agent-span job completed')
+  })
+
+  worker.on('failed', (job, err) => {
+    const attemptsAllowed = job?.opts?.attempts ?? 1
+    const attemptsMade = job?.attemptsMade ?? 0
+
+    if (attemptsMade >= attemptsAllowed) {
+      logger.error(
+        { jobId: job?.id, payload: job?.data, error: err.message, stack: err.stack },
+        'Agent-span job permanently failed — dead-lettered',
+      )
+    } else {
+      logger.warn(
+        { jobId: job?.id, attempt: attemptsMade, error: err.message },
+        'Agent-span job failed — will retry',
+      )
+    }
+  })
+
+  return worker
+}

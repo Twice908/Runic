@@ -7,6 +7,7 @@ import { registerHelmet } from './plugins/helmet'
 import { registerRateLimit } from './plugins/rate-limit'
 import { healthRoutes } from './routes/health'
 import { ingestRoutes } from './routes/ingest'
+import { agentSpanRoutes } from './routes/ingest/agent-span'
 import { projectRoutes } from './routes/projects'
 import { analyticsRoutes } from './routes/analytics'
 import { alertRoutes } from './routes/alerts'
@@ -41,6 +42,7 @@ async function bootstrap(): Promise<void> {
   await app.register(healthRoutes)
   await app.register(clerkWebhookRoutes)
   await app.register(ingestRoutes)
+  await app.register(agentSpanRoutes)
   await app.register(projectRoutes)
   await app.register(analyticsRoutes)
   await app.register(alertRoutes)
