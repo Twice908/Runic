@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '@pulse/db'
 import { hashApiKey } from '../../lib/api-key'
 import { agentSpansQueue } from '../../lib/queue'
-import { AgentSpanPayloadSchema } from '../../schemas/agent-span.schema'
+import { AgentSpanBatchSchema } from '../../schemas/agent-span.schema'
 
 export async function agentSpanRoutes(app: FastifyInstance): Promise<void> {
   app.post('/ingest/agent-span', async (request, reply) => {
@@ -28,7 +28,7 @@ export async function agentSpanRoutes(app: FastifyInstance): Promise<void> {
       })
     }
 
-    const parsed = AgentSpanPayloadSchema.safeParse(request.body)
+    const parsed = AgentSpanBatchSchema.safeParse(request.body)
     if (!parsed.success) {
       return reply.status(400).send({
         success: false,
@@ -37,9 +37,11 @@ export async function agentSpanRoutes(app: FastifyInstance): Promise<void> {
     }
 
     // Fire and forget — never block the response path on the queue push
-    agentSpansQueue.add('process', { ...parsed.data, projectId: project.id }).catch((err: unknown) => {
-      request.log.warn({ err }, 'Failed to enqueue agent span')
-    })
+    for (const span of parsed.data) {
+      agentSpansQueue.add('process', { ...span, projectId: project.id }).catch((err: unknown) => {
+        request.log.warn({ err }, 'Failed to enqueue agent span')
+      })
+    }
 
     return reply.status(202).send({ success: true })
   })

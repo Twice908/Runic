@@ -27,3 +27,6 @@ export const AgentSpanPayloadSchema = z.object({
 })
 
 export type AgentSpanPayload = z.infer<typeof AgentSpanPayloadSchema>
+
+export const AgentSpanBatchSchema = z.array(AgentSpanPayloadSchema).min(1)
+export type AgentSpanBatch = z.infer<typeof AgentSpanBatchSchema>

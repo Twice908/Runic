@@ -122,35 +122,35 @@ Phase A goal: A developer can install `@pulse/agent`, wrap their agent run, and 
 
 ## 6. SDK Package
 
-- [ ] **6.1 Scaffold @pulse/agent package**
+- [x] **6.1 Scaffold @pulse/agent package**
   Create `packages/pulse-agent/` with `package.json` (name: `@pulse/agent`, main: `dist/index.js`, types: `dist/index.d.ts`), `tsconfig.json` (extends root), and `src/index.ts`. Add to the monorepo workspace.
 
-- [ ] **6.2 Implement PulseAgent class**
+- [x] **6.2 Implement PulseAgent class**
   In `src/agent.ts`, implement `PulseAgent` with:
   - Constructor: accepts `{ apiKey: string, host?: string }` (default host: `https://api.usepulse.dev`)
   - `startRun(task: string, opts?): Promise<AgentRun>` — sends `run_start` payload, returns run handle
   - Internal: `_flush(payloads)` — fire-and-forget POST to `/ingest/agent-span`, silent on error
 
-- [ ] **6.3 Implement AgentRun class**
+- [x] **6.3 Implement AgentRun class**
   In `src/run.ts`, implement `AgentRun` with:
   - `startSpan(spanType, opts): AgentSpan` — creates span, records `startedAt`, adds to internal buffer
   - `complete(opts?): Promise<void>` — sends `run_end` payload, flushes all buffered spans
   - Internal buffer: array of span payloads flushed on `complete()` or after 5s timeout (whichever first)
   - All client-side IDs generated with `crypto.randomUUID()`
 
-- [ ] **6.4 Implement AgentSpan class**
+- [x] **6.4 Implement AgentSpan class**
   In `src/span.ts`, implement `AgentSpan` with:
   - `end(opts): void` — records `endedAt`, calculates `durationMs`, pushes completed payload to run's buffer
   - Truncates `inputPreview` and `outputPreview` to 500 chars
   - Does NOT send to API directly — run handles all flushing
 
-- [ ] **6.5 Add no-op mode**
+- [x] **6.5 Add no-op mode**
   At the top of `PulseAgent` constructor: if `process.env.PULSE_DISABLED === 'true'`, replace all methods with no-ops that return immediately. Prevents any SDK activity in test environments.
 
-- [ ] **6.6 Build and publish config**
+- [x] **6.6 Build and publish config**
   Configure `tsup` (or `tsc`) to build to `dist/`. Add `build` and `prepublishOnly` scripts. Confirm the package can be imported in a plain Node.js script with `import { PulseAgent } from '@pulse/agent'`.
 
-- [ ] **6.7 Write SDK unit tests**
+- [x] **6.7 Write SDK unit tests**
   Test `PulseAgent`, `AgentRun`, `AgentSpan` with mocked `fetch`:
   - `startRun` sends correct `run_start` payload
   - `span.end` adds payload to buffer (does not call fetch)
