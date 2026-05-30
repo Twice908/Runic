@@ -35,7 +35,21 @@ export async function proxyToApi(
     return API_UNREACHABLE
   }
   if (res.status === 204) return new NextResponse(null, { status: 204 })
-  return NextResponse.json(await res.json(), { status: res.status })
+  const text = await res.text()
+  if (!text) {
+    return NextResponse.json(
+      { success: false, error: { code: 'BAD_GATEWAY', message: 'API server returned an empty response' } },
+      { status: 502 },
+    )
+  }
+  try {
+    return NextResponse.json(JSON.parse(text), { status: res.status })
+  } catch {
+    return NextResponse.json(
+      { success: false, error: { code: 'BAD_GATEWAY', message: 'API server returned an invalid response' } },
+      { status: 502 },
+    )
+  }
 }
 
 /**
@@ -63,7 +77,21 @@ export async function proxyToRateLimiter(
     return RL_UNREACHABLE
   }
   if (res.status === 204) return new NextResponse(null, { status: 204 })
-  return NextResponse.json(await res.json(), { status: res.status })
+  const text = await res.text()
+  if (!text) {
+    return NextResponse.json(
+      { success: false, error: { code: 'BAD_GATEWAY', message: 'Rate limiter returned an empty response' } },
+      { status: 502 },
+    )
+  }
+  try {
+    return NextResponse.json(JSON.parse(text), { status: res.status })
+  } catch {
+    return NextResponse.json(
+      { success: false, error: { code: 'BAD_GATEWAY', message: 'Rate limiter returned an invalid response' } },
+      { status: 502 },
+    )
+  }
 }
 
 /**
@@ -94,5 +122,19 @@ export async function proxyToDrift(
     return DRIFT_UNREACHABLE
   }
   if (res.status === 204) return new NextResponse(null, { status: 204 })
-  return NextResponse.json(await res.json(), { status: res.status })
+  const text = await res.text()
+  if (!text) {
+    return NextResponse.json(
+      { success: false, error: { code: 'BAD_GATEWAY', message: 'Drift collector returned an empty response' } },
+      { status: 502 },
+    )
+  }
+  try {
+    return NextResponse.json(JSON.parse(text), { status: res.status })
+  } catch {
+    return NextResponse.json(
+      { success: false, error: { code: 'BAD_GATEWAY', message: 'Drift collector returned an invalid response' } },
+      { status: 502 },
+    )
+  }
 }

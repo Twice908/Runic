@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
+import { Cpu } from 'lucide-react'
 import type { ProjectSummary } from '@pulse/types'
 
 interface SidebarProps {
@@ -12,8 +13,8 @@ interface SidebarProps {
 // than passed as a `?project=` query param. Used for routes that live under
 // `app/dashboard/[projectId]/...`.
 const NAV_ITEMS: Array<
-  | { label: string; href: string; pathTemplate?: undefined }
-  | { label: string; href?: undefined; pathTemplate: string }
+  | { label: string; href: string; pathTemplate?: undefined; icon?: React.ComponentType<{ className?: string }> }
+  | { label: string; href?: undefined; pathTemplate: string; icon?: React.ComponentType<{ className?: string }> }
 > = [
   { label: 'Overview', href: '/dashboard' },
   { label: 'Live Logs', href: '/dashboard/logs' },
@@ -22,6 +23,7 @@ const NAV_ITEMS: Array<
   { label: 'Alerts', href: '/dashboard/alerts' },
   { label: 'Uptime', href: '/dashboard/uptime' },
   { label: 'Rate Limiter', href: '/dashboard/rate-limiter' },
+  { label: 'Agents', href: '/dashboard/agents', icon: Cpu },
   { label: 'Drift', pathTemplate: '/dashboard/:projectId/drift/overview' },
   { label: 'Settings', href: '/dashboard/settings' },
 ]
@@ -108,6 +110,7 @@ export default function Sidebar({ projects }: SidebarProps) {
                   : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
               ].join(' ')}
             >
+              {item.icon && <item.icon className="mr-2 h-4 w-4 shrink-0" />}
               {item.label}
             </button>
           )

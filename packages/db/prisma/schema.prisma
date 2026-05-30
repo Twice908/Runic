@@ -34,6 +34,8 @@ model Project {
   driftManifests   DriftManifest[]
   driftEvents      DriftEvent[]
   driftKeyMetas    DriftKeyMeta[]
+  agentDefinitions AgentDefinition[]
+  agentRuns        AgentRun[]
   createdAt        DateTime         @default(now())
 }
 
@@ -221,4 +223,70 @@ enum DriftEventType {
   EXTRA_KEY
   STALE_ROTATION
   KEY_RESTORED
+}
+
+// ── PAO: Pulse Agent Observe ─────────────────────────────────────────────────
+
+model AgentDefinition {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  role      String?
+  model     String?
+  createdAt DateTime @default(now())
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  spans   AgentSpan[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model AgentRun {
+  id           String    @id @default(cuid())
+  projectId    String
+  task         String
+  status       String    @default("running")
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  totalTokens  Int?
+  totalCostUsd Decimal?  @db.Decimal(10, 6)
+  metadata     Json?
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  spans   AgentSpan[]
+
+  @@index([projectId, startedAt])
+}
+
+model AgentSpan {
+  id                String   @default(cuid())
+  runId             String
+  projectId         String
+  agentDefinitionId String?
+  parentSpanId      String?
+  spanType          String
+  name              String
+  startedAt         DateTime
+  endedAt           DateTime?
+  durationMs        Int?
+  inputTokens       Int?
+  outputTokens      Int?
+  totalTokens       Int?
+  costUsd           Decimal? @db.Decimal(10, 6)
+  model             String?
+  inputPreview      String?  @db.Text
+  outputPreview     String?  @db.Text
+  statusCode        String?
+  errorMessage      String?
+  metadata          Json?
+
+  run             AgentRun         @relation(fields: [runId], references: [id], onDelete: Cascade)
+  agentDefinition AgentDefinition? @relation(fields: [agentDefinitionId], references: [id], onDelete: SetNull)
+
+  // Composite PK required by TimescaleDB: every unique index must include
+  // the partition column (startedAt). A plain @id on `id` alone would fail.
+  @@id([id, startedAt])
+  @@index([runId, startedAt])
+  @@index([projectId, startedAt])
 }

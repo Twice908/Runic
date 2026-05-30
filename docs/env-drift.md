@@ -167,6 +167,160 @@ Stripe meter: `drift_snapshots_monthly` — 1 event per successful `POST /v1/sna
 
 ---
 
+## GitHub Action — CI Integration Guide
+
+The `drift-action/` directory contains a self-contained GitHub Action that runs `pulse-drift ci-check` inside any GitHub Actions workflow. It is bundled with `ncc` into a single `dist/index.js` — no `node_modules` required at runner runtime.
+
+---
+
+### How the action works (internal wiring)
+
+| action.yml input | CLI flag passed to `pulse-drift ci-check` |
+|---|---|
+| `project-key` | `--project-key <value>` |
+| `environment` | `--env <value>` |
+| `fail-on-drift` | enables `core.setFailed()` when `result.passed === false` |
+| `ignore-keys` | `--ignore-keys <value>` (omitted when empty) |
+| `api-url` | `--api-url <value>` (omitted when empty, CLI default applies) |
+
+The action always adds `--json` so it can parse `{ passed, driftScore, missingKeys, extraKeys }` from stdout. All three outputs (`drift-score`, `missing-keys`, `extra-keys`) are set from the parsed JSON before any failure is raised, so downstream steps can always read them.
+
+The action makes the same HTTP call that `pulse-drift ci-check --json` makes internally, replicated directly in the ncc bundle. No subprocess, no installed binary, no `npm ci` pre-step required — the `dist/index.js` is completely self-contained.
+
+---
+
+### Prerequisites
+
+1. **Pulse API key** — generate one in the Pulse dashboard under *Settings → API Keys*. Store it as a GitHub Actions secret (e.g. `PULSE_API_KEY`).
+2. **Baseline environment set** — the drift check compares against whatever environment is marked as baseline in the Pulse dashboard. Set it once via *Drift → Environments → Set as baseline* or `POST /v1/baseline/:projectId`.
+3. **Snapshot already sent** — at least one `pulse-drift snapshot` run must exist for the environment being checked, otherwise the check returns "no baseline set" and passes by default.
+
+---
+
+### Minimal workflow — check on every push
+
+```yaml
+# .github/workflows/drift-check.yml
+name: Env Drift Check
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pulse Drift Check
+        uses: ./drift-action          # local action — no version tag needed in monorepo
+        with:
+          project-key: ${{ secrets.PULSE_API_KEY }}
+          environment: staging        # must match the env name used in snapshot
+          fail-on-drift: 'true'       # fails the job when drift is detected
+          ignore-keys: 'NODE_ENV,CI'  # optional: comma-separated keys to exclude
+```
+
+---
+
+### Full workflow — snapshot on deploy, check on PR
+
+```yaml
+# .github/workflows/drift-full.yml
+name: Drift Pipeline
+
+on:
+  push:
+    branches: [main]          # snapshot after every production deploy
+  pull_request:               # ci-check on every PR
+
+jobs:
+  # ── Snapshot (runs only on merge to main) ─────────────────────────────────
+  snapshot:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      # Send the current env key names to the Pulse drift collector
+      - run: |
+          npx pulse-drift snapshot \
+            --env production \
+            --project-key ${{ secrets.PULSE_API_KEY }}
+
+  # ── CI Check (runs on every PR) ────────────────────────────────────────────
+  drift-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pulse Drift Check
+        id: drift
+        uses: ./drift-action
+        with:
+          project-key: ${{ secrets.PULSE_API_KEY }}
+          environment: staging
+          fail-on-drift: 'true'
+          ignore-keys: 'NODE_ENV,CI,GITHUB_TOKEN'
+
+      # Consume outputs in a downstream step (even when the action fails,
+      # the outputs are set before core.setFailed() is called)
+      - name: Print drift summary
+        if: always()
+        run: |
+          echo "Drift score : ${{ steps.drift.outputs.drift-score }}/100"
+          echo "Missing keys: ${{ steps.drift.outputs.missing-keys }}"
+          echo "Extra keys  : ${{ steps.drift.outputs.extra-keys }}"
+```
+
+---
+
+### Action outputs reference
+
+| Output | Type | Example |
+|---|---|---|
+| `drift-score` | string (0–100) | `"85"` |
+| `missing-keys` | comma-separated string | `"DB_PASSWORD,REDIS_URL"` |
+| `extra-keys` | comma-separated string | `"OLD_SECRET"` |
+
+Use `steps.<id>.outputs.drift-score` to gate other jobs, post comments, or send Slack alerts.
+
+---
+
+### Rebuilding the action after changes
+
+Any change to `drift-action/src/index.ts` requires a rebuild before the action works:
+
+```bash
+cd drift-action
+./node_modules/.bin/ncc build src/index.ts -o dist --license licenses.txt
+# or: npm run build
+git add dist/index.js dist/licenses.txt
+git commit -m "chore: rebuild drift-action bundle"
+```
+
+The `dist/index.js` must be committed — GitHub Actions loads it directly from the repo, not from a registry.
+
+---
+
+### Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Action step fails with network error | Runner can't reach `drift.pulseobserve.com` | Check firewall/proxy settings; the action calls the API directly over HTTPS |
+| `no baseline set` in output | No environment has been marked as baseline | Set baseline in dashboard or via `POST /v1/baseline/:projectId` |
+| Score 100, no drift, but keys changed | Snapshot not sent after deploy | Add the snapshot job (see full workflow above) |
+| Action exits 0 even with `fail-on-drift: 'true'` | Drift check API was unreachable (fail-open design) | Check `PULSE_DRIFT_API_URL` and network connectivity from the runner |
+
+---
+
 ## Known Issues
 
 All resolved as of 2026-05-28.

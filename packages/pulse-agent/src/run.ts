@@ -1,0 +1,79 @@
+import { AgentSpan } from './span'
+import type { AgentSpanPayload, CompleteRunOpts, SpanType, StartSpanOpts } from './types'
+
+const AUTO_FLUSH_MS = 5_000
+
+export class AgentRun {
+  readonly id: string
+  private readonly runId: string
+  private readonly startedAt: Date
+  private readonly flushFn: (payloads: AgentSpanPayload[]) => void
+  private readonly disabled: boolean
+  private buffer: AgentSpanPayload[] = []
+  private flushTimer: ReturnType<typeof setTimeout> | null = null
+  private completed = false
+
+  constructor(
+    runId: string,
+    startedAt: Date,
+    flushFn: (payloads: AgentSpanPayload[]) => void,
+    disabled = false,
+  ) {
+    this.id = runId
+    this.runId = runId
+    this.startedAt = startedAt
+    this.flushFn = flushFn
+    this.disabled = disabled
+
+    if (!disabled) {
+      this.flushTimer = setTimeout(() => {
+        if (!this.completed) {
+          this.completed = true
+          this._doFlush()
+        }
+      }, AUTO_FLUSH_MS)
+    }
+  }
+
+  startSpan(spanType: SpanType, opts: StartSpanOpts): AgentSpan {
+    if (this.disabled) return AgentSpan.noop()
+
+    const spanId = crypto.randomUUID()
+    const startedAt = new Date()
+    return new AgentSpan(spanId, this.runId, startedAt, spanType, opts, (payload) => {
+      this.buffer.push(payload)
+    })
+  }
+
+  async complete(opts: CompleteRunOpts = {}): Promise<void> {
+    if (this.disabled || this.completed) return
+    this.completed = true
+
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer)
+      this.flushTimer = null
+    }
+
+    this._doFlush(opts)
+  }
+
+  private _doFlush(opts: CompleteRunOpts = {}): void {
+    const runEndPayload: AgentSpanPayload = {
+      type: 'run_end',
+      runId: this.runId,
+      startedAt: this.startedAt.toISOString(),
+      endedAt: new Date().toISOString(),
+      status: opts.status,
+      errorMessage: opts.errorMessage,
+      metadata: opts.metadata,
+    }
+
+    const payloads = [...this.buffer, runEndPayload]
+    this.buffer = []
+    this.flushFn(payloads)
+  }
+
+  static noop(): AgentRun {
+    return new AgentRun('', new Date(), () => {}, true)
+  }
+}

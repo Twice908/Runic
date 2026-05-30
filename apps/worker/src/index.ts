@@ -6,6 +6,7 @@ import { processIngest } from './processors/ingest.processor'
 import { processUptimeCheck } from './processors/uptime.processor'
 import { processObserveAlertsCheck } from './processors/observe-alerts.processor'
 import { processRateLimitEvent } from './processors/rate-limit-event.processor'
+import { startAgentSpanWorker } from './processors/agent-span.processor'
 
 const logger = pino({ name: 'worker', level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
 
@@ -116,4 +117,7 @@ rateLimitEventWorker.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, error: err.message, stack: err.stack }, 'Rate-limit-event job failed')
 })
 
-logger.info('Worker started — ingest queue + uptime repeatable job + rate-limit-events queue active')
+// ── Agent-span worker ─────────────────────────────────────────────────────────
+startAgentSpanWorker(connection)
+
+logger.info('Worker started — ingest + uptime + observe-alerts + rate-limit-events + agent-spans queues active')

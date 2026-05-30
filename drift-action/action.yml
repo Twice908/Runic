@@ -4,6 +4,9 @@ inputs:
   project-key:
     description: 'Pulse API key'
     required: true
+  project-id:
+    description: 'Pulse project ID'
+    required: true
   environment:
     description: 'Environment to check'
     required: true
