@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAlerts, useAlertHistory } from '@/hooks/useAlerts'
 import type { AlertRule, AlertType, AlertChannel } from '@pulse/types'
 
@@ -504,43 +505,61 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
 
 export default function AlertsPage() {
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const projectId = searchParams.get('project') ?? ''
 
-  const { data: alerts, isLoading, refetch } = useAlerts(projectId)
+  const { data: alerts, isLoading } = useAlerts(projectId)
   const [historyPage, setHistoryPage] = useState(1)
-  const { data: history, total: historyTotal, isLoading: historyLoading, refetch: refetchHistory } = useAlertHistory(projectId, historyPage)
+  const { data: history, total: historyTotal, isLoading: historyLoading } = useAlertHistory(projectId, historyPage)
 
   const [showForm, setShowForm] = useState(false)
-  const [toggling, setToggling] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<string | null>(null)
-  const [deletingHistory, setDeletingHistory] = useState<string | null>(null)
   const [confirmDeleteHistory, setConfirmDeleteHistory] = useState<string | null>(null)
 
-  async function handleToggle(id: string, active: boolean) {
-    setToggling(id)
-    await fetch(`/api/projects/${projectId}/alerts/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active }),
-    })
-    setToggling(null)
-    refetch()
+  const invalidateAlerts = () =>
+    queryClient.invalidateQueries({ queryKey: ['alerts', projectId] })
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      fetch(`/api/projects/${projectId}/alerts/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active }),
+      }),
+    onSuccess: invalidateAlerts,
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) =>
+      fetch(`/api/projects/${projectId}/alerts/${id}`, { method: 'DELETE' }),
+    onSuccess: invalidateAlerts,
+  })
+
+  const deleteHistoryMutation = useMutation({
+    mutationFn: (historyId: string) =>
+      fetch(`/api/projects/${projectId}/alerts/history/${historyId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      setConfirmDeleteHistory(null)
+      queryClient.invalidateQueries({ queryKey: ['alerts', 'history', projectId] })
+    },
+  })
+
+  function handleToggle(id: string, active: boolean) {
+    toggleMutation.mutate({ id, active })
   }
 
-  async function handleDelete(id: string) {
-    setDeleting(id)
-    await fetch(`/api/projects/${projectId}/alerts/${id}`, { method: 'DELETE' })
-    setDeleting(null)
-    refetch()
+  function handleDelete(id: string) {
+    deleteMutation.mutate(id)
   }
 
-  async function handleDeleteHistory(historyId: string) {
-    setDeletingHistory(historyId)
-    await fetch(`/api/projects/${projectId}/alerts/history/${historyId}`, { method: 'DELETE' })
-    setDeletingHistory(null)
-    setConfirmDeleteHistory(null)
-    refetchHistory()
+  function handleDeleteHistory(historyId: string) {
+    deleteHistoryMutation.mutate(historyId)
   }
+
+  const toggling = toggleMutation.isPending ? toggleMutation.variables?.id ?? null : null
+  const deleting = deleteMutation.isPending ? deleteMutation.variables ?? null : null
+  const deletingHistory = deleteHistoryMutation.isPending
+    ? deleteHistoryMutation.variables ?? null
+    : null
 
   if (!projectId) {
     return (
@@ -572,7 +591,7 @@ export default function AlertsPage() {
         {showForm && (
           <CreateForm
             projectId={projectId}
-            onCreated={() => { setShowForm(false); refetch() }}
+            onCreated={() => { setShowForm(false); invalidateAlerts() }}
             onCancel={() => setShowForm(false)}
           />
         )}

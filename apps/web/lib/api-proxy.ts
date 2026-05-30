@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server'
 
+// Forward an upstream JSON response, preserving its Cache-Control header so
+// browser/CDN caching set by the API or services actually reaches the client.
+// (NextResponse.json builds a fresh response, so headers must be copied through.)
+function jsonWithUpstreamCache(res: Response, text: string): NextResponse {
+  const init: ResponseInit = { status: res.status }
+  const cacheControl = res.headers.get('cache-control')
+  if (cacheControl) init.headers = { 'Cache-Control': cacheControl }
+  return NextResponse.json(JSON.parse(text), init)
+}
+
 const API_UNREACHABLE = NextResponse.json(
   { error: 'API server unreachable. Is apps/api running on port 3001?' },
   { status: 503 },
@@ -43,7 +53,7 @@ export async function proxyToApi(
     )
   }
   try {
-    return NextResponse.json(JSON.parse(text), { status: res.status })
+    return jsonWithUpstreamCache(res, text)
   } catch {
     return NextResponse.json(
       { success: false, error: { code: 'BAD_GATEWAY', message: 'API server returned an invalid response' } },
@@ -85,7 +95,7 @@ export async function proxyToRateLimiter(
     )
   }
   try {
-    return NextResponse.json(JSON.parse(text), { status: res.status })
+    return jsonWithUpstreamCache(res, text)
   } catch {
     return NextResponse.json(
       { success: false, error: { code: 'BAD_GATEWAY', message: 'Rate limiter returned an invalid response' } },
@@ -130,7 +140,7 @@ export async function proxyToDrift(
     )
   }
   try {
-    return NextResponse.json(JSON.parse(text), { status: res.status })
+    return jsonWithUpstreamCache(res, text)
   } catch {
     return NextResponse.json(
       { success: false, error: { code: 'BAD_GATEWAY', message: 'Drift collector returned an invalid response' } },

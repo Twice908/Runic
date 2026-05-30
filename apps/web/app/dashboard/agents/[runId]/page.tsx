@@ -1,27 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import RunStatusBadge from '@/components/agents/RunStatusBadge'
-import SpanTable, { type AgentSpanRow } from '@/components/agents/SpanTable'
+import SpanTable from '@/components/agents/SpanTable'
+import { useAgentRun } from '@/hooks/useAgents'
 import { relativeTime } from '@/lib/utils'
-
-interface AgentRunDetail {
-  id: string
-  task: string
-  status: string
-  startedAt: string
-  endedAt: string | null
-  totalTokens: number | null
-  totalCostUsd: number | null
-  metadata: unknown
-}
-
-interface RunDetailResponse {
-  run: AgentRunDetail
-  spans: AgentSpanRow[]
-}
 
 function formatDuration(startedAt: string, endedAt: string | null): string {
   if (!endedAt) return '—'
@@ -49,22 +33,7 @@ export default function RunDetailPage({ params }: PageProps) {
   const router = useRouter()
   const projectId = searchParams.get('project') ?? ''
 
-  const [data, setData] = useState<RunDetailResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setIsLoading(true)
-    setError(null)
-    fetch(`/api/agents/runs/${runId}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json() as Promise<RunDetailResponse>
-      })
-      .then(setData)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to fetch run'))
-      .finally(() => setIsLoading(false))
-  }, [runId])
+  const { data, isLoading, error } = useAgentRun(projectId, runId)
 
   function goBack() {
     const p = new URLSearchParams()

@@ -1,9 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { apiFetch } from '@/lib/api'
+import { useStats } from '@/hooks/useStats'
 import { formatResponseTime } from '@/lib/utils'
-import type { ProjectStats } from '@pulse/types'
 
 interface StatsCardsProps {
   projectId: string
@@ -37,14 +35,7 @@ function StatCard({ label, value, sub, valueColor = 'text-gray-900 dark:text-sla
 }
 
 export default function StatsCards({ projectId }: StatsCardsProps) {
-  const [stats, setStats] = useState<ProjectStats | null>(null)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    apiFetch<ProjectStats>(`/api/projects/${projectId}/stats`)
-      .then(setStats)
-      .catch(() => setError(true))
-  }, [projectId])
+  const { data: stats, error } = useStats(projectId)
 
   if (error) {
     return (

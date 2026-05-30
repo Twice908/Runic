@@ -2,95 +2,97 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { apiFetch } from '@/lib/api'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useProjects, PROJECTS_KEY } from '@/hooks/useProjects'
 import RegenerateKeyModal from '@/components/RegenerateKeyModal'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import type { ProjectSummary } from '@pulse/types'
 
 export default function SettingsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const projectId = searchParams.get('project') ?? ''
 
-  const [projects, setProjects] = useState<ProjectSummary[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: projects, isLoading: loading } = useProjects()
 
   // API key section
   const [showRegenerateModal, setShowRegenerateModal] = useState(false)
 
   // Rename section
   const [nameValue, setNameValue] = useState('')
-  const [nameSaving, setNameSaving] = useState(false)
   const [nameError, setNameError] = useState('')
   const [nameSaved, setNameSaved] = useState(false)
 
   // Delete section
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [showDeleteForm, setShowDeleteForm] = useState(false)
 
-  useEffect(() => {
-    apiFetch<{ projects: ProjectSummary[] }>('/api/projects')
-      .then((d) => {
-        setProjects(d.projects)
-        const proj = d.projects.find((p) => p.id === projectId) ?? d.projects[0]
-        if (proj) setNameValue(proj.name)
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [projectId])
-
   const project = projects.find((p) => p.id === projectId) ?? projects[0]
 
-  async function handleRename(e: React.FormEvent) {
+  // Seed the rename field once the active project resolves from cache.
+  useEffect(() => {
+    if (project) setNameValue(project.name)
+  }, [project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function errorMessage(error: unknown, fallback: string): string {
+    return error instanceof Error ? error.message : fallback
+  }
+
+  const renameMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch(`/api/projects/${project?.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) {
+        const json = (await res.json()) as { error?: { message?: string } | string }
+        const msg = typeof json.error === 'object' ? json.error?.message : json.error
+        throw new Error(msg ?? `HTTP ${res.status}`)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROJECTS_KEY })
+      setNameSaved(true)
+      setTimeout(() => setNameSaved(false), 3000)
+      router.refresh()
+    },
+    onError: (error) => setNameError(errorMessage(error, 'Failed to rename project')),
+  })
+  const nameSaving = renameMutation.isPending
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/projects/${project?.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const json = (await res.json()) as { error?: { message?: string } | string }
+        const msg = typeof json.error === 'object' ? json.error?.message : json.error
+        throw new Error(msg ?? `HTTP ${res.status}`)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROJECTS_KEY })
+      router.push('/dashboard')
+      router.refresh()
+    },
+    onError: (error) => setDeleteError(errorMessage(error, 'Failed to delete project')),
+  })
+  const deleting = deleteMutation.isPending
+
+  function handleRename(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = nameValue.trim()
     if (!trimmed) { setNameError('Name cannot be empty'); return }
     if (trimmed.length > 64) { setNameError('Name must be 64 characters or fewer'); return }
     setNameError('')
-    setNameSaving(true)
-    try {
-      const res = await fetch(`/api/projects/${project?.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed }),
-      })
-      if (!res.ok) {
-        const json = (await res.json()) as { error?: { message?: string } | string }
-        const msg = typeof json.error === 'object' ? json.error?.message : json.error
-        setNameError(msg ?? `HTTP ${res.status}`)
-        return
-      }
-      setNameSaved(true)
-      setTimeout(() => setNameSaved(false), 3000)
-      router.refresh()
-    } catch {
-      setNameError('Failed to rename project')
-    } finally {
-      setNameSaving(false)
-    }
+    renameMutation.mutate(trimmed)
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!project || deleteConfirmText !== project.name) return
-    setDeleting(true)
     setDeleteError('')
-    try {
-      const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const json = (await res.json()) as { error?: { message?: string } | string }
-        const msg = typeof json.error === 'object' ? json.error?.message : json.error
-        setDeleteError(msg ?? `HTTP ${res.status}`)
-        return
-      }
-      router.push('/dashboard')
-      router.refresh()
-    } catch {
-      setDeleteError('Failed to delete project')
-    } finally {
-      setDeleting(false)
-    }
+    deleteMutation.mutate()
   }
 
   const AppearanceSection = (

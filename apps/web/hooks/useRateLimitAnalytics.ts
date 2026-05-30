@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api'
 
-const REFRESH_INTERVAL_MS = 60_000
+const RL_ANALYTICS_STALE_TIME_MS = 30 * 1000
+const RL_ANALYTICS_REFETCH_INTERVAL_MS = 60 * 1000
 
 interface PollResult<T> {
   data: T
@@ -10,41 +12,23 @@ interface PollResult<T> {
   error: string | null
 }
 
-function usePollData<T>(url: string | null, empty: T): PollResult<T> {
-  const [data, setData] = useState<T>(empty)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+function usePolledQuery<T>(key: readonly unknown[], url: string | null, empty: T): PollResult<T> {
+  const query = useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      const raw = await apiFetch<{ data?: T } | T>(url as string)
+      return ((raw as { data?: T }).data ?? (raw as T))
+    },
+    enabled: Boolean(url),
+    staleTime: RL_ANALYTICS_STALE_TIME_MS,
+    refetchInterval: RL_ANALYTICS_REFETCH_INTERVAL_MS,
+  })
 
-  const fetchData = useCallback(async () => {
-    if (!url || document.visibilityState === 'hidden') return
-    try {
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = (await res.json()) as { data?: T }
-      setData(json.data ?? (json as T))
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [url])
-
-  useEffect(() => {
-    setIsLoading(true)
-    setData(empty)
-    if (!url) {
-      setIsLoading(false)
-      return
-    }
-    fetchData()
-    const id = setInterval(fetchData, REFRESH_INTERVAL_MS)
-    return () => clearInterval(id)
-  // empty is a stable reference ([] or similar) — intentionally not a dep
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchData, url])
-
-  return { data, isLoading, error }
+  return {
+    data: query.data ?? empty,
+    isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+  }
 }
 
 export interface HitRateBucket {
@@ -67,7 +51,11 @@ export function useHitRate(projectId: string, window = '24h', ruleId?: string) {
   const qs = new URLSearchParams({ window })
   if (ruleId) qs.set('ruleId', ruleId)
   const url = projectId ? `/api/rate-limiter/${projectId}/hit-rate?${qs.toString()}` : null
-  return usePollData<HitRateBucket[]>(url, [])
+  return usePolledQuery<HitRateBucket[]>(
+    ['rate-limiter', 'hit-rate', projectId, window, ruleId ?? ''],
+    url,
+    [],
+  )
 }
 
 export function useTopOffenders(projectId: string, window = '24h', limit = 10, ruleId?: string) {
@@ -76,5 +64,9 @@ export function useTopOffenders(projectId: string, window = '24h', limit = 10, r
   const url = projectId
     ? `/api/rate-limiter/${projectId}/top-offenders?${qs.toString()}`
     : null
-  return usePollData<TopOffender[]>(url, [])
+  return usePolledQuery<TopOffender[]>(
+    ['rate-limiter', 'top-offenders', projectId, window, limit, ruleId ?? ''],
+    url,
+    [],
+  )
 }

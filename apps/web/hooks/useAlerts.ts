@@ -1,7 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api'
 import type { AlertRule, AlertHistoryEntry } from '@pulse/types'
+
+const ALERTS_STALE_TIME_MS = 60 * 1000
 
 interface AlertsResult {
   data: AlertRule[]
@@ -19,65 +22,37 @@ interface HistoryResult {
 }
 
 export function useAlerts(projectId: string): AlertsResult {
-  const [data, setData] = useState<AlertRule[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const query = useQuery({
+    queryKey: ['alerts', projectId],
+    queryFn: () => apiFetch<{ data?: AlertRule[] }>(`/api/projects/${projectId}/alerts`),
+    enabled: Boolean(projectId),
+    staleTime: ALERTS_STALE_TIME_MS,
+  })
 
-  const fetchData = useCallback(async () => {
-    if (!projectId) {
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-    try {
-      const res = await fetch(`/api/projects/${projectId}/alerts`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = (await res.json()) as { data?: AlertRule[] }
-      setData(json.data ?? [])
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch alerts')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [projectId])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  return { data, isLoading, error, refetch: fetchData }
+  return {
+    data: query.data?.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+    refetch: query.refetch,
+  }
 }
 
 export function useAlertHistory(projectId: string, page: number): HistoryResult {
-  const [data, setData] = useState<AlertHistoryEntry[]>([])
-  const [total, setTotal] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const query = useQuery({
+    queryKey: ['alerts', 'history', projectId, page],
+    queryFn: () =>
+      apiFetch<{ data?: AlertHistoryEntry[]; total?: number }>(
+        `/api/projects/${projectId}/alerts/history?page=${page}&limit=20`,
+      ),
+    enabled: Boolean(projectId),
+    staleTime: ALERTS_STALE_TIME_MS,
+  })
 
-  const fetchData = useCallback(async () => {
-    if (!projectId) {
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-    try {
-      const r = await fetch(`/api/projects/${projectId}/alerts/history?page=${page}&limit=20`)
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      const json = (await r.json()) as { data?: AlertHistoryEntry[]; total?: number }
-      setData(json.data ?? [])
-      setTotal(json.total ?? 0)
-      setError(null)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch history')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [projectId, page])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  return { data, total, isLoading, error, refetch: fetchData }
+  return {
+    data: query.data?.data ?? [],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+    refetch: query.refetch,
+  }
 }

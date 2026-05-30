@@ -1,27 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import StatsCards from '@/components/StatsCards'
 import LogTable from '@/components/LogTable'
 import CreateProjectModal from '@/components/CreateProjectModal'
-import { apiFetch } from '@/lib/api'
-import type { ProjectSummary } from '@pulse/types'
+import { useProjects } from '@/hooks/useProjects'
 
 export default function DashboardPage() {
   const searchParams = useSearchParams()
   const projectId = searchParams.get('project')
 
-  const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const { data: projects, isLoading: loading } = useProjects()
   const [showModal, setShowModal] = useState(false)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    apiFetch<{ projects: ProjectSummary[] }>('/api/projects')
-      .then((d) => setProjects(d.projects))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
 
   if (loading) {
     return (

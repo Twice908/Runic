@@ -47,5 +47,7 @@ export async function GET(
     activeErrors,
   }
 
-  return NextResponse.json(stats)
+  return NextResponse.json(stats, {
+    headers: { 'Cache-Control': 's-maxage=30, stale-while-revalidate=60' },
+  })
 }

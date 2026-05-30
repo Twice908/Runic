@@ -46,6 +46,7 @@ export async function rulesRoutes(app: FastifyInstance): Promise<void> {
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
     })
 
+    reply.header('Cache-Control', 's-maxage=60, stale-while-revalidate=120')
     return reply.send({
       success: true,
       data: rules as unknown as RateLimitRuleRecord[],

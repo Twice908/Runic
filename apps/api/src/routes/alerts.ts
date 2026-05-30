@@ -65,6 +65,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
       orderBy: { id: 'desc' },
     })
 
+    reply.header('Cache-Control', 's-maxage=60, stale-while-revalidate=120')
     return reply.send({
       success: true,
       data: alerts.map((a) => ({
@@ -336,6 +337,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
 
     const current = checks[0]?.status === 'down' ? 'down' : 'up'
 
+    reply.header('Cache-Control', 's-maxage=60, stale-while-revalidate=120')
     return reply.send({
       success: true,
       data: {

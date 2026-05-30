@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { apiFetch } from '@/lib/api'
+import { useState } from 'react'
+import { useLogs } from '@/hooks/useLogs'
 import { relativeTime, formatResponseTime, statusCategory } from '@/lib/utils'
-import type { RequestLogRow, LogsResponse } from '@pulse/types'
 
 interface LogTableProps {
   projectId: string
@@ -34,35 +33,14 @@ const STATUS_FILTERS = ['all', '2xx', '3xx', '4xx', '5xx'] as const
 type StatusFilter = (typeof STATUS_FILTERS)[number]
 
 export default function LogTable({ projectId }: LogTableProps) {
-  const [logs, setLogs] = useState<RequestLogRow[]>([])
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [loading, setLoading] = useState(true)
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true)
-    const params = new URLSearchParams({ page: String(page), limit: '50' })
-    if (statusFilter !== 'all') params.set('statusCategory', statusFilter)
-
-    try {
-      const data = await apiFetch<LogsResponse>(
-        `/api/projects/${projectId}/logs?${params.toString()}`,
-      )
-      setLogs(data.logs)
-      setTotal(data.total)
-      setHasMore(data.hasMore)
-    } catch {
-      setLogs([])
-    } finally {
-      setLoading(false)
-    }
-  }, [projectId, page, statusFilter])
-
-  useEffect(() => {
-    fetchLogs()
-  }, [fetchLogs])
+  const { logs, total, hasMore, isLoading: loading } = useLogs(projectId, {
+    page,
+    limit: 50,
+    status: statusFilter,
+  })
 
   function handleFilterChange(f: StatusFilter) {
     setStatusFilter(f)

@@ -2,6 +2,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import { QueryProvider } from '@/providers/query-provider'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <QueryProvider>{children}</QueryProvider>
           </ThemeProvider>
         </body>
       </html>

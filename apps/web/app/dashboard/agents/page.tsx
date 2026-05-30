@@ -1,27 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import RunStatusBadge from '@/components/agents/RunStatusBadge'
+import { useAgentRuns } from '@/hooks/useAgents'
 import { relativeTime } from '@/lib/utils'
-
-interface AgentRunSummary {
-  id: string
-  task: string
-  status: string
-  startedAt: string
-  endedAt: string | null
-  totalTokens: number | null
-  totalCostUsd: number | null
-  spanCount: number
-}
-
-interface RunsResponse {
-  runs: AgentRunSummary[]
-  total: number
-  page: number
-  hasMore: boolean
-}
 
 function formatDuration(startedAt: string, endedAt: string | null): string {
   if (!endedAt) return '—'
@@ -50,52 +32,8 @@ export default function AgentsPage() {
   const statusFilter = searchParams.get('status') ?? 'all'
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
 
-  const [data, setData] = useState<RunsResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const fetchRuns = useCallback(async (background = false) => {
-    if (!projectId) {
-      setIsLoading(false)
-      return
-    }
-    if (!background) setIsLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({ project: projectId, page: String(page), limit: '20' })
-      if (statusFilter !== 'all') params.set('status', statusFilter)
-      const res = await fetch(`/api/agents/runs?${params.toString()}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setData((await res.json()) as RunsResponse)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch runs')
-    } finally {
-      if (!background) setIsLoading(false)
-    }
-  }, [projectId, statusFilter, page])
-
-  useEffect(() => {
-    fetchRuns()
-
-    const POLL_INTERVAL_MS = 5_000
-
-    function schedulePoll() {
-      pollTimerRef.current = setTimeout(async () => {
-        await fetchRuns(true)
-        schedulePoll()
-      }, POLL_INTERVAL_MS)
-    }
-
-    schedulePoll()
-
-    return () => {
-      if (pollTimerRef.current !== null) {
-        clearTimeout(pollTimerRef.current)
-        pollTimerRef.current = null
-      }
-    }
-  }, [fetchRuns])
+  // Background polling (5s) is preserved via the hook's refetchInterval.
+  const { data, isLoading, error } = useAgentRuns(projectId, { status: statusFilter, page })
 
   function setStatusFilter(s: string) {
     const p = new URLSearchParams(searchParams.toString())

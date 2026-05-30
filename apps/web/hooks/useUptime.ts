@@ -1,7 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api'
 import type { UptimeStatus } from '@pulse/types'
+
+const UPTIME_STALE_TIME_MS = 60 * 1000
+const UPTIME_REFETCH_INTERVAL_MS = 60 * 1000
 
 const EMPTY: UptimeStatus = {
   current: 'up',
@@ -17,34 +21,17 @@ interface UptimeResult {
 }
 
 export function useUptime(projectId: string): UptimeResult {
-  const [data, setData] = useState<UptimeStatus>(EMPTY)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const query = useQuery({
+    queryKey: ['uptime', projectId],
+    queryFn: () => apiFetch<{ data?: UptimeStatus }>(`/api/projects/${projectId}/uptime`),
+    enabled: Boolean(projectId),
+    staleTime: UPTIME_STALE_TIME_MS,
+    refetchInterval: UPTIME_REFETCH_INTERVAL_MS,
+  })
 
-  const fetchData = useCallback(async () => {
-    if (!projectId) {
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-    try {
-      const res = await fetch(`/api/projects/${projectId}/uptime`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = (await res.json()) as { data?: UptimeStatus }
-      setData(json.data ?? EMPTY)
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch uptime data')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [projectId])
-
-  useEffect(() => {
-    fetchData()
-    const id = setInterval(fetchData, 60_000)
-    return () => clearInterval(id)
-  }, [fetchData])
-
-  return { data, isLoading, error }
+  return {
+    data: query.data?.data ?? EMPTY,
+    isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+  }
 }
