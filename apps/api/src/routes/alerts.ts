@@ -193,7 +193,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
     const [events, total] = await Promise.all([
       prisma.alertEvent.findMany({
         where: { projectId },
-        include: { alert: { select: { type: true, channel: true } } },
+        include: { alert: { select: { active: true } } },
         orderBy: { sentAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -206,6 +206,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
       data: events.map((e) => ({
         id: e.id,
         alertId: e.alertId,
+        alertStatus: e.alertId === null ? 'deleted' : e.alert?.active ? 'active' : 'disabled',
         type: e.type,
         triggeredValue: e.triggeredValue,
         threshold: e.threshold,
@@ -217,6 +218,23 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
       page,
       hasMore: page * limit < total,
     })
+  })
+
+  // ── DELETE /projects/:projectId/alerts/history/:historyId ───────────────
+  app.delete('/projects/:projectId/alerts/history/:historyId', async (request, reply) => {
+    const clerkId = await verifyClerkJwt(request.headers.authorization, reply)
+    if (!clerkId) return
+
+    const { projectId, historyId } = request.params as { projectId: string; historyId: string }
+    const project = await getOwnedProject(clerkId, projectId)
+    if (!project) return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } })
+
+    const event = await prisma.alertEvent.findFirst({ where: { id: historyId, projectId } })
+    if (!event) return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'History entry not found' } })
+
+    await prisma.alertEvent.delete({ where: { id: historyId } })
+
+    return reply.send({ success: true })
   })
 
   // ── POST /projects/:projectId/alerts/:alertId/test ───────────────────────

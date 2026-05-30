@@ -1,6 +1,6 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import SpanTypeChip from '@/components/agents/SpanTypeChip'
 
 export interface AgentSpanRow {
@@ -26,9 +26,25 @@ export interface AgentSpanRow {
   metadata: unknown
 }
 
+const SPAN_LABELS: Record<string, string> = {
+  llm_call: 'LLM Call',
+  tool_call: 'Tool Call',
+  memory_read: 'Memory',
+  agent_message: 'Agent Msg',
+  error: 'Error',
+}
+
+function spanTypeLabel(spanType: string): string {
+  return SPAN_LABELS[spanType] ?? spanType
+}
+
 interface SpanDetailPanelProps {
   span: AgentSpanRow | null
+  prevSpan: AgentSpanRow | null
+  nextSpan: AgentSpanRow | null
   onClose: () => void
+  onPrev: () => void
+  onNext: () => void
 }
 
 function formatCost(usd: number | null): string {
@@ -50,7 +66,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export default function SpanDetailPanel({ span, onClose }: SpanDetailPanelProps) {
+export default function SpanDetailPanel({
+  span,
+  prevSpan,
+  nextSpan,
+  onClose,
+  onPrev,
+  onNext,
+}: SpanDetailPanelProps) {
   const isOpen = span !== null
 
   return (
@@ -151,6 +174,33 @@ export default function SpanDetailPanel({ span, onClose }: SpanDetailPanelProps)
                   </pre>
                 </div>
               )}
+            </div>
+
+            {/* Footer navigation */}
+            <div className="flex-shrink-0 border-t border-gray-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between gap-2">
+              <button
+                onClick={onPrev}
+                disabled={prevSpan === null}
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-600 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="flex flex-col items-start leading-tight">
+                  <span className="text-gray-400 dark:text-slate-500 text-[10px] font-normal">Prev</span>
+                  <span>{prevSpan ? spanTypeLabel(prevSpan.spanType) : '—'}</span>
+                </span>
+              </button>
+
+              <button
+                onClick={onNext}
+                disabled={nextSpan === null}
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-600 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <span className="flex flex-col items-end leading-tight">
+                  <span className="text-gray-400 dark:text-slate-500 text-[10px] font-normal">Next</span>
+                  <span>{nextSpan ? spanTypeLabel(nextSpan.spanType) : '—'}</span>
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
+              </button>
             </div>
           </>
         )}

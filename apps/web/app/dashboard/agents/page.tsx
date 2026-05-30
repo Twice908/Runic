@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import RunStatusBadge from '@/components/agents/RunStatusBadge'
 import { relativeTime } from '@/lib/utils'
@@ -53,13 +53,14 @@ export default function AgentsPage() {
   const [data, setData] = useState<RunsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const fetchRuns = useCallback(async () => {
+  const fetchRuns = useCallback(async (background = false) => {
     if (!projectId) {
       setIsLoading(false)
       return
     }
-    setIsLoading(true)
+    if (!background) setIsLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams({ project: projectId, page: String(page), limit: '20' })
@@ -70,12 +71,30 @@ export default function AgentsPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch runs')
     } finally {
-      setIsLoading(false)
+      if (!background) setIsLoading(false)
     }
   }, [projectId, statusFilter, page])
 
   useEffect(() => {
     fetchRuns()
+
+    const POLL_INTERVAL_MS = 5_000
+
+    function schedulePoll() {
+      pollTimerRef.current = setTimeout(async () => {
+        await fetchRuns(true)
+        schedulePoll()
+      }, POLL_INTERVAL_MS)
+    }
+
+    schedulePoll()
+
+    return () => {
+      if (pollTimerRef.current !== null) {
+        clearTimeout(pollTimerRef.current)
+        pollTimerRef.current = null
+      }
+    }
   }, [fetchRuns])
 
   function setStatusFilter(s: string) {

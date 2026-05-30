@@ -15,6 +15,7 @@ interface HistoryResult {
   total: number
   isLoading: boolean
   error: string | null
+  refetch: () => void
 }
 
 export function useAlerts(projectId: string): AlertsResult {
@@ -54,27 +55,29 @@ export function useAlertHistory(projectId: string, page: number): HistoryResult 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!projectId) {
       setIsLoading(false)
       return
     }
     setIsLoading(true)
-    fetch(`/api/projects/${projectId}/alerts/history?page=${page}&limit=20`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json() as Promise<{ data?: AlertHistoryEntry[]; total?: number }>
-      })
-      .then((json) => {
-        setData(json.data ?? [])
-        setTotal(json.total ?? 0)
-        setError(null)
-      })
-      .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : 'Failed to fetch history')
-      })
-      .finally(() => setIsLoading(false))
+    try {
+      const r = await fetch(`/api/projects/${projectId}/alerts/history?page=${page}&limit=20`)
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const json = (await r.json()) as { data?: AlertHistoryEntry[]; total?: number }
+      setData(json.data ?? [])
+      setTotal(json.total ?? 0)
+      setError(null)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch history')
+    } finally {
+      setIsLoading(false)
+    }
   }, [projectId, page])
 
-  return { data, total, isLoading, error }
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { data, total, isLoading, error, refetch: fetchData }
 }

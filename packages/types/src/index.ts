@@ -133,7 +133,8 @@ export interface AlertRule {
 
 export interface AlertHistoryEntry {
   id: string
-  alertId: string
+  alertId: string | null
+  alertStatus: 'active' | 'disabled' | 'deleted'
   type: string
   triggeredValue: number
   threshold: number

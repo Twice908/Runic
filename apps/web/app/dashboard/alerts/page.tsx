@@ -508,11 +508,13 @@ export default function AlertsPage() {
 
   const { data: alerts, isLoading, refetch } = useAlerts(projectId)
   const [historyPage, setHistoryPage] = useState(1)
-  const { data: history, total: historyTotal, isLoading: historyLoading } = useAlertHistory(projectId, historyPage)
+  const { data: history, total: historyTotal, isLoading: historyLoading, refetch: refetchHistory } = useAlertHistory(projectId, historyPage)
 
   const [showForm, setShowForm] = useState(false)
   const [toggling, setToggling] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deletingHistory, setDeletingHistory] = useState<string | null>(null)
+  const [confirmDeleteHistory, setConfirmDeleteHistory] = useState<string | null>(null)
 
   async function handleToggle(id: string, active: boolean) {
     setToggling(id)
@@ -530,6 +532,14 @@ export default function AlertsPage() {
     await fetch(`/api/projects/${projectId}/alerts/${id}`, { method: 'DELETE' })
     setDeleting(null)
     refetch()
+  }
+
+  async function handleDeleteHistory(historyId: string) {
+    setDeletingHistory(historyId)
+    await fetch(`/api/projects/${projectId}/alerts/history/${historyId}`, { method: 'DELETE' })
+    setDeletingHistory(null)
+    setConfirmDeleteHistory(null)
+    refetchHistory()
   }
 
   if (!projectId) {
@@ -607,29 +617,85 @@ export default function AlertsPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700">
+              <table className="min-w-max w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Alert type</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Alert type</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">What triggered it</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Value</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Threshold</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Channel</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Value</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Threshold</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Channel</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Alert status</th>
+                    <th className="w-10 px-3 py-3" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
                   {history.map((entry) => (
-                    <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
+                    <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 group">
                       <td className="px-4 py-3 text-gray-500 dark:text-slate-400 whitespace-nowrap">{relativeTime(entry.sentAt)}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-medium text-gray-700 dark:text-slate-300">{entry.type.replace('_', ' ')}</span>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs font-medium text-gray-700 dark:text-slate-300">{entry.type.replace(/_/g, ' ')}</span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-slate-400 max-w-xs truncate">{entry.message}</td>
-                      <td className="px-4 py-3 font-medium text-red-600">{formatValue(entry.type, entry.triggeredValue)}</td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{formatValue(entry.type, entry.threshold)}</td>
-                      <td className="px-4 py-3 capitalize text-gray-500 dark:text-slate-400">{entry.channel}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-slate-400 min-w-[240px] max-w-sm whitespace-normal leading-relaxed">{entry.message}</td>
+                      <td className="px-4 py-3 font-medium text-red-600 whitespace-nowrap">{formatValue(entry.type, entry.triggeredValue)}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-slate-400 whitespace-nowrap">{formatValue(entry.type, entry.threshold)}</td>
+                      <td className="px-4 py-3 capitalize text-gray-500 dark:text-slate-400 whitespace-nowrap">{entry.channel}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {entry.alertStatus === 'active' && (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />
+                            Active
+                          </span>
+                        )}
+                        {entry.alertStatus === 'disabled' && (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" />
+                            Disabled
+                          </span>
+                        )}
+                        {entry.alertStatus === 'deleted' && (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-gray-400 inline-block" />
+                            Deleted
+                          </span>
+                        )}
+                      </td>
+                      {/* Fixed-width delete column — confirm state overlays via absolute, never shifts layout */}
+                      <td className="w-10 px-3 py-3 text-center">
+                        <div className="relative inline-flex items-center justify-center">
+                          {confirmDeleteHistory === entry.id ? (
+                            <div className="absolute right-0 z-10 flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-slate-800 px-2.5 py-1.5 shadow-lg whitespace-nowrap">
+                              <span className="text-xs text-gray-500 dark:text-slate-400">Delete this entry?</span>
+                              <button
+                                onClick={() => handleDeleteHistory(entry.id)}
+                                disabled={deletingHistory === entry.id}
+                                className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors"
+                              >
+                                {deletingHistory === entry.id ? '…' : 'Yes'}
+                              </button>
+                              <span className="text-gray-300 dark:text-slate-600">·</span>
+                              <button
+                                onClick={() => setConfirmDeleteHistory(null)}
+                                className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
+                              >
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteHistory(entry.id)}
+                              title="Delete history entry"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-gray-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66H14.5a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0zM4.544 3.5l.852 10.615a1 1 0 0 0 .997.885h6.214a1 1 0 0 0 .997-.885L14.456 3.5z"/>
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

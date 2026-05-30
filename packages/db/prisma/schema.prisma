@@ -97,7 +97,7 @@ model Alert {
 
 model AlertEvent {
   id             String   @id @default(cuid())
-  alertId        String
+  alertId        String?
   projectId      String
   type           String
   triggeredValue Float
@@ -107,7 +107,7 @@ model AlertEvent {
   destination    String
   sentAt         DateTime @default(now())
 
-  alert          Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  alert          Alert?   @relation(fields: [alertId], references: [id], onDelete: SetNull)
   project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 

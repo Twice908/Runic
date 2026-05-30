@@ -36,7 +36,7 @@ function sortIndicator(col: SortColumn, sortCol: SortColumn, sortDir: SortDir): 
 export default function SpanTable({ spans }: SpanTableProps) {
   const [sortCol, setSortCol] = useState<SortColumn>('startedAt')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
-  const [selectedSpan, setSelectedSpan] = useState<AgentSpanRow | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
   function toggleSort(col: SortColumn) {
     if (sortCol === col) {
@@ -54,6 +54,10 @@ export default function SpanTable({ spans }: SpanTableProps) {
       sortCol === 'startedAt' ? new Date(b.startedAt).getTime() : (b.durationMs ?? 0)
     return sortDir === 'asc' ? aVal - bVal : bVal - aVal
   })
+
+  const selectedSpan = selectedIndex !== null ? (sorted[selectedIndex] ?? null) : null
+  const prevSpan = selectedIndex !== null && selectedIndex > 0 ? (sorted[selectedIndex - 1] ?? null) : null
+  const nextSpan = selectedIndex !== null && selectedIndex < sorted.length - 1 ? (sorted[selectedIndex + 1] ?? null) : null
 
   if (spans.length === 0) {
     return (
@@ -104,10 +108,10 @@ export default function SpanTable({ spans }: SpanTableProps) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((span) => (
+              {sorted.map((span, idx) => (
                 <tr
                   key={span.id}
-                  onClick={() => setSelectedSpan(span)}
+                  onClick={() => setSelectedIndex(idx)}
                   className="border-b border-gray-100 dark:border-slate-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors duration-150"
                 >
                   <td className="px-4 py-3">
@@ -146,7 +150,14 @@ export default function SpanTable({ spans }: SpanTableProps) {
         </div>
       </div>
 
-      <SpanDetailPanel span={selectedSpan} onClose={() => setSelectedSpan(null)} />
+      <SpanDetailPanel
+        span={selectedSpan}
+        prevSpan={prevSpan}
+        nextSpan={nextSpan}
+        onClose={() => setSelectedIndex(null)}
+        onPrev={() => setSelectedIndex((i) => (i !== null && i > 0 ? i - 1 : i))}
+        onNext={() => setSelectedIndex((i) => (i !== null && i < sorted.length - 1 ? i + 1 : i))}
+      />
     </>
   )
 }
