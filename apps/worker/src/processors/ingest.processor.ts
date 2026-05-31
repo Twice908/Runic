@@ -2,6 +2,7 @@ import type { Job } from 'bullmq'
 import pino from 'pino'
 import { prisma } from '@pulse/db'
 import type { IngestEvent } from '@pulse/types'
+import { redis } from '../lib/redis'
 
 const logger = pino({ name: 'ingest-processor' })
 
@@ -18,9 +19,21 @@ export async function processIngest(job: Job<IngestJobData>): Promise<void> {
 
   const ts = new Date(timestamp)
 
-  await prisma.requestLog.create({
+  const log = await prisma.requestLog.create({
     data: { projectId, method, route, statusCode, responseTime, timestamp: ts },
   })
+
+  await redis.publish(
+    `logs:${projectId}`,
+    JSON.stringify({
+      id: log.id,
+      method: log.method,
+      route: log.route,
+      statusCode: log.statusCode,
+      responseTime: log.responseTime,
+      timestamp: log.timestamp.toISOString(),
+    }),
+  )
 
   if (statusCode >= 400) {
     await upsertErrorEvent({ projectId, route, statusCode, timestamp: ts, stack })

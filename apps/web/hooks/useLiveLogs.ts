@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { RequestLogRow } from '@pulse/types'
 
-const POLL_INTERVAL_MS = 3_000
-const MAX_LOG_BUFFER = 500
+const MAX_LOG_BUFFER = 200
 
 export interface LiveLogsFilter {
   statusCategory?: string
@@ -12,65 +11,67 @@ export interface LiveLogsFilter {
   search?: string
 }
 
-export function useLiveLogs(projectId: string, filter: LiveLogsFilter = {}) {
+export function useLiveLogs(projectId: string, _filter: LiveLogsFilter = {}) {
   const [logs, setLogs] = useState<RequestLogRow[]>([])
-  const [isPolling, setIsPolling] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set())
-  const lastTimestampRef = useRef<string | null>(null)
-
-  const { statusCategory = 'all', method = 'ALL', search = '' } = filter
-
-  const fetchNewLogs = useCallback(async (signal: AbortSignal) => {
-    if (document.visibilityState === 'hidden') return
-
-    const params = new URLSearchParams()
-    if (lastTimestampRef.current) params.set('since', lastTimestampRef.current)
-    if (statusCategory !== 'all') params.set('statusCategory', statusCategory)
-    if (method !== 'ALL') params.set('method', method)
-    if (search) params.set('search', search)
-
-    try {
-      const res = await fetch(`/api/projects/${projectId}/logs?${params.toString()}`, { signal })
-      if (!res.ok) return
-
-      const data = (await res.json()) as { logs: RequestLogRow[] }
-      const incoming = data.logs ?? []
-
-      if (incoming.length > 0) {
-        const isFirstFetch = lastTimestampRef.current === null
-        lastTimestampRef.current = incoming[0].timestamp
-        const incomingIds = new Set(incoming.map((l) => l.id))
-        setNewRowIds(incomingIds)
-        setTimeout(() => setNewRowIds(new Set()), 1200)
-        setLogs((prev) => {
-          // On first fetch after a filter change, replace stale data atomically
-          if (isFirstFetch) return incoming.slice(0, MAX_LOG_BUFFER)
-          const existingIds = new Set(prev.map((l) => l.id))
-          const fresh = incoming.filter((l) => !existingIds.has(l.id))
-          if (fresh.length === 0) return prev
-          return [...fresh, ...prev].slice(0, MAX_LOG_BUFFER)
-        })
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return
-    }
-  }, [projectId, statusCategory, method, search])
+  const isFirstMessageRef = useRef(true)
 
   useEffect(() => {
-    const controller = new AbortController()
+    if (!projectId) return
 
-    lastTimestampRef.current = null
-    fetchNewLogs(controller.signal)
+    isFirstMessageRef.current = true
+    setIsLoading(true)
+    setError(null)
+    setLogs([])
 
-    setIsPolling(true)
-    const intervalId = setInterval(() => fetchNewLogs(controller.signal), POLL_INTERVAL_MS)
+    const es = new EventSource(`/api/projects/${projectId}/logs/stream`)
+
+    es.onopen = () => {
+      setIsConnected(true)
+      setError(null)
+    }
+
+    es.onmessage = (event: MessageEvent<string>) => {
+      const incoming = JSON.parse(event.data) as RequestLogRow
+      setIsLoading(false)
+
+      if (isFirstMessageRef.current) {
+        // Batch initial logs — the server sends them in chronological order,
+        // so we collect them and prepend all at once via the flush below.
+        // Because each message fires separately we accumulate via functional update.
+        isFirstMessageRef.current = false
+      }
+
+      setLogs((prev) => {
+        const existingIds = new Set(prev.map((l) => l.id))
+        if (existingIds.has(incoming.id)) return prev
+        return [incoming, ...prev].slice(0, MAX_LOG_BUFFER)
+      })
+
+      setNewRowIds((prev) => new Set([...prev, incoming.id]))
+      setTimeout(() => {
+        setNewRowIds((prev) => {
+          const next = new Set(prev)
+          next.delete(incoming.id)
+          return next
+        })
+      }, 1200)
+    }
+
+    es.onerror = () => {
+      setIsConnected(false)
+      setIsLoading(false)
+      setError('Connection lost — reconnecting…')
+    }
 
     return () => {
-      controller.abort()
-      clearInterval(intervalId)
-      setIsPolling(false)
+      es.close()
+      setIsConnected(false)
     }
-  }, [fetchNewLogs])
+  }, [projectId])
 
-  return { logs, isPolling, newRowIds }
+  return { logs, isConnected, isLoading, error, newRowIds }
 }

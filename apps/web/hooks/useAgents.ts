@@ -1,12 +1,11 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import type { AgentSpanRow } from '@/components/agents/SpanTable'
 
-const AGENTS_STALE_TIME_MS = 15 * 1000
-const AGENTS_REFETCH_INTERVAL_MS = 5 * 1000
-const AGENTS_PAGE_SIZE = 20
+const MAX_RUN_BUFFER = 100
 
 export interface AgentRunSummary {
   id: string
@@ -60,27 +59,46 @@ interface RunDetailResult {
 }
 
 export function useAgentRuns(projectId: string, filters: AgentRunsFilters = {}): RunsResult {
-  const { status = 'all', page = 1 } = filters
+  const { status = 'all' } = filters
+  const [runs, setRuns] = useState<AgentRunSummary[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const params = new URLSearchParams({
-    project: projectId,
-    page: String(page),
-    limit: String(AGENTS_PAGE_SIZE),
-  })
-  if (status !== 'all') params.set('status', status)
+  useEffect(() => {
+    if (!projectId) return
 
-  const query = useQuery({
-    queryKey: ['agents', 'runs', projectId, status, page],
-    queryFn: () => apiFetch<AgentRunsResponse>(`/api/agents/runs?${params.toString()}`),
-    enabled: Boolean(projectId),
-    staleTime: AGENTS_STALE_TIME_MS,
-    refetchInterval: AGENTS_REFETCH_INTERVAL_MS,
-  })
+    setIsLoading(true)
+    setError(null)
+    setRuns([])
+
+    const es = new EventSource(`/api/projects/${projectId}/agents/stream`)
+
+    es.onopen = () => setError(null)
+
+    es.onmessage = (event: MessageEvent<string>) => {
+      const incoming = JSON.parse(event.data) as AgentRunSummary
+      setIsLoading(false)
+      setRuns((prev) => {
+        const exists = prev.some((r) => r.id === incoming.id)
+        if (exists) return prev.map((r) => (r.id === incoming.id ? incoming : r))
+        return [incoming, ...prev].slice(0, MAX_RUN_BUFFER)
+      })
+    }
+
+    es.onerror = () => {
+      setIsLoading(false)
+      setError('Connection lost — reconnecting…')
+    }
+
+    return () => es.close()
+  }, [projectId])
+
+  const filtered = status === 'all' ? runs : runs.filter((r) => r.status === status)
 
   return {
-    data: query.data ?? null,
-    isLoading: query.isLoading,
-    error: query.error instanceof Error ? query.error.message : null,
+    data: { runs: filtered, total: filtered.length, page: 1, hasMore: false },
+    isLoading,
+    error,
   }
 }
 
@@ -89,7 +107,7 @@ export function useAgentRun(projectId: string, runId: string): RunDetailResult {
     queryKey: ['agents', 'run', projectId, runId],
     queryFn: () => apiFetch<AgentRunDetailResponse>(`/api/agents/runs/${runId}`),
     enabled: Boolean(runId),
-    staleTime: AGENTS_STALE_TIME_MS,
+    staleTime: 15_000,
   })
 
   return {

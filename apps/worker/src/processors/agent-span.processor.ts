@@ -2,6 +2,7 @@ import { Worker } from 'bullmq'
 import type { ConnectionOptions, Job } from 'bullmq'
 import pino from 'pino'
 import { prisma, Prisma } from '@pulse/db'
+import { redis } from '../lib/redis'
 
 const logger = pino({ name: 'agent-span-processor' })
 
@@ -48,6 +49,21 @@ async function handleRunStart(data: AgentSpanJobData): Promise<void> {
       totalCostUsd: 0,
     },
   })
+
+  await redis.publish(
+    `agent-runs:${projectId}`,
+    JSON.stringify({
+      id: runId,
+      projectId,
+      task: task ?? '',
+      status: 'running',
+      startedAt,
+      endedAt: null,
+      totalTokens: 0,
+      totalCostUsd: null,
+      spanCount: 0,
+    }),
+  )
 }
 
 async function handleSpan(data: AgentSpanJobData): Promise<void> {
@@ -126,7 +142,7 @@ async function handleSpan(data: AgentSpanJobData): Promise<void> {
 }
 
 async function handleRunEnd(data: AgentSpanJobData): Promise<void> {
-  const { runId, endedAt, status } = data
+  const { runId, projectId, endedAt, status } = data
 
   const aggregate = await prisma.agentSpan.aggregate({
     where: { runId },
@@ -142,6 +158,28 @@ async function handleRunEnd(data: AgentSpanJobData): Promise<void> {
       totalCostUsd: aggregate._sum.costUsd ?? 0,
     },
   })
+
+  const updatedRun = await prisma.agentRun.findUnique({
+    where: { id: runId },
+    include: { _count: { select: { spans: true } } },
+  })
+
+  if (updatedRun) {
+    await redis.publish(
+      `agent-runs:${projectId}`,
+      JSON.stringify({
+        id: updatedRun.id,
+        projectId: updatedRun.projectId,
+        task: updatedRun.task,
+        status: updatedRun.status,
+        startedAt: updatedRun.startedAt.toISOString(),
+        endedAt: updatedRun.endedAt?.toISOString() ?? null,
+        totalTokens: updatedRun.totalTokens,
+        totalCostUsd: updatedRun.totalCostUsd?.toNumber() ?? null,
+        spanCount: updatedRun._count.spans,
+      }),
+    )
+  }
 }
 
 // ── Main dispatcher ───────────────────────────────────────────────────────────

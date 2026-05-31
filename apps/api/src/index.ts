@@ -11,6 +11,8 @@ import { agentSpanRoutes } from './routes/ingest/agent-span'
 import { projectRoutes } from './routes/projects'
 import { analyticsRoutes } from './routes/analytics'
 import { alertRoutes } from './routes/alerts'
+import { logsStreamRoutes } from './routes/logs-stream'
+import { agentsStreamRoutes } from './routes/agents-stream'
 import { clerkWebhookRoutes } from './routes/webhooks/clerk'
 
 async function bootstrap(): Promise<void> {
@@ -46,6 +48,8 @@ async function bootstrap(): Promise<void> {
   await app.register(projectRoutes)
   await app.register(analyticsRoutes)
   await app.register(alertRoutes)
+  await app.register(logsStreamRoutes)
+  await app.register(agentsStreamRoutes)
 
   const address = await app.listen({ port: parseInt(env.PORT), host: '0.0.0.0' })
   app.log.info(`API server listening at ${address}`)
