@@ -101,7 +101,7 @@ export default function Sidebar({ projects }: SidebarProps) {
             <button
               key={key}
               onClick={() =>
-                item.pathTemplate ? navigateTemplate(item.pathTemplate) : navigate(item.href)
+                item.pathTemplate ? navigateTemplate(item.pathTemplate) : navigate(item.href!)
               }
               className={[
                 'flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150',

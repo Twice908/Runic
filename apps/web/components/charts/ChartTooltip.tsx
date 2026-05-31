@@ -1,8 +1,15 @@
 'use client'
 
-import type { TooltipProps } from 'recharts'
+type ChartTooltipPayloadEntry = {
+  name?: string
+  value?: number | string
+  color?: string
+}
 
-type ChartTooltipProps = TooltipProps<number, string> & {
+type ChartTooltipProps = {
+  active?: boolean
+  payload?: ChartTooltipPayloadEntry[]
+  label?: string | number
   labelFormatter?: (label: string) => string
   valueFormatter?: (value: number, name: string) => string
 }

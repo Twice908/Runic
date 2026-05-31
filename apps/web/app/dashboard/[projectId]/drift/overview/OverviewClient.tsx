@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import BackButton from '../BackButton'
 import type { DriftEnvironmentSummary, DriftEvent } from '../types'
 
-type DriftCellState = 'present' | 'missing' | 'extra' | 'stale'
+type DriftCellState = 'present' | 'missing' | 'extra' | 'stale' | 'ignored'
 
 interface MatrixRow {
   keyName: string

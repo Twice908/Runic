@@ -173,7 +173,7 @@ async function evaluateResponseTime(
  */
 export async function evaluateRateLimitAlerts(projectId: string): Promise<void> {
   const lockKey = `rl:eval:lock:${projectId}`
-  const lock = await redis.set(lockKey, '1', 'NX', 'EX', 5)
+  const lock = await redis.set(lockKey, '1', 'EX', 5, 'NX')
   if (!lock) {
     logger.debug({ projectId }, 'Rate limit evaluation already running — skipping')
     return
