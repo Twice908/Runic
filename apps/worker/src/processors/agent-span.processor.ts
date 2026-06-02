@@ -103,33 +103,51 @@ async function handleSpan(data: AgentSpanJobData): Promise<void> {
   const spanTotalTokens = (inputTokens ?? 0) + (outputTokens ?? 0)
   const hasTokens = inputTokens != null || outputTokens != null
 
-  await prisma.agentSpan.createMany({
-    data: [
-      {
-        id: spanId!,
-        runId,
-        projectId,
-        agentDefinitionId,
-        parentSpanId: data.parentSpanId,
-        spanType: spanType!,
-        name: name!,
-        startedAt: new Date(startedAt),
-        endedAt: endMs !== undefined ? new Date(endedAt!) : undefined,
-        durationMs,
-        inputTokens,
-        outputTokens,
-        totalTokens: hasTokens ? spanTotalTokens : undefined,
-        costUsd,
-        model: data.model,
-        inputPreview: data.inputPreview,
-        outputPreview: data.outputPreview,
-        statusCode: data.status,
-        errorMessage: data.errorMessage,
-        // Prisma accepts InputJsonValue for Json? fields; our type is a subset of that
-        metadata: (data.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
-      },
-    ],
-    skipDuplicates: true,
+  // Guard: ensure the parent AgentRun exists before writing the span so FK
+  // constraints never fire if run_start somehow hasn't landed yet.
+  await prisma.agentRun.upsert({
+    where: { id: runId },
+    update: {},
+    create: {
+      id: runId,
+      projectId,
+      task: '',
+      status: 'running',
+      startedAt: new Date(startedAt),
+      totalTokens: 0,
+      totalCostUsd: 0,
+    },
+  })
+
+  const spanRow = {
+    id: spanId!,
+    runId,
+    projectId,
+    agentDefinitionId,
+    parentSpanId: data.parentSpanId,
+    spanType: spanType!,
+    name: name!,
+    startedAt: new Date(startedAt),
+    endedAt: endMs !== undefined ? new Date(endedAt!) : undefined,
+    durationMs,
+    inputTokens,
+    outputTokens,
+    totalTokens: hasTokens ? spanTotalTokens : undefined,
+    costUsd,
+    model: data.model,
+    inputPreview: data.inputPreview,
+    outputPreview: data.outputPreview,
+    statusCode: data.status,
+    errorMessage: data.errorMessage,
+    metadata: (data.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
+  }
+
+  // Upsert so duplicate span jobs (from SDK re-sending on complete()) are
+  // silently ignored rather than raising a unique-constraint error.
+  await prisma.agentSpan.upsert({
+    where: { id_startedAt: { id: spanId!, startedAt: new Date(startedAt) } },
+    create: spanRow,
+    update: {},
   })
 
   await prisma.agentRun.update({
@@ -209,7 +227,7 @@ export async function processAgentSpan(job: Job<AgentSpanJobData>): Promise<void
 export function startAgentSpanWorker(connection: ConnectionOptions): Worker<AgentSpanJobData> {
   const worker = new Worker<AgentSpanJobData>('agent-spans', processAgentSpan, {
     connection,
-    concurrency: 10,
+    concurrency: 1,
   })
 
   worker.on('completed', (job) => {

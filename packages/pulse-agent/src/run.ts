@@ -1,7 +1,7 @@
 import { AgentSpan } from './span'
 import type { AgentSpanPayload, CompleteRunOpts, SpanType, StartSpanOpts } from './types'
 
-const AUTO_FLUSH_MS = 5_000
+const AUTO_FLUSH_MS = 30_000
 
 export class AgentRun {
   readonly id: string
@@ -28,8 +28,10 @@ export class AgentRun {
     if (!disabled) {
       this.flushTimer = setTimeout(() => {
         if (!this.completed) {
-          this.completed = true
-          this._doFlush()
+          // Auto-flush buffered spans WITHOUT finalizing the run.
+          // Emitting run_end here would close the run server-side and
+          // cause spans that end after the timer to be dropped.
+          this._doFlush(false)
         }
       }, AUTO_FLUSH_MS)
     }
@@ -54,22 +56,33 @@ export class AgentRun {
       this.flushTimer = null
     }
 
-    this._doFlush(opts)
+    this._doFlush(true, opts)
   }
 
-  private _doFlush(opts: CompleteRunOpts = {}): void {
-    const runEndPayload: AgentSpanPayload = {
-      type: 'run_end',
-      runId: this.runId,
-      startedAt: this.startedAt.toISOString(),
-      endedAt: new Date().toISOString(),
-      status: opts.status,
-      errorMessage: opts.errorMessage,
-      metadata: opts.metadata,
-    }
+  private _doFlush(isFinal: boolean, opts: CompleteRunOpts = {}): void {
+    const payloads: AgentSpanPayload[] = [...this.buffer]
 
-    const payloads = [...this.buffer, runEndPayload]
-    this.buffer = []
+    if (isFinal) {
+      // Final flush: clear the buffer and append run_end.
+      // complete() re-sends ALL buffered spans (including any the timer
+      // already sent) so the worker can deduplicate by spanId.
+      this.buffer = []
+      payloads.push({
+        type: 'run_end',
+        runId: this.runId,
+        startedAt: this.startedAt.toISOString(),
+        endedAt: new Date().toISOString(),
+        status: opts.status,
+        errorMessage: opts.errorMessage,
+        metadata: opts.metadata,
+      })
+    }
+    // Timer flush (isFinal=false): do NOT clear this.buffer.
+    // Spans added after the timer still accumulate and will be
+    // included in the final flush when complete() is called.
+
+    if (payloads.length === 0) return
+
     this.flushFn(payloads)
   }
 
