@@ -1,14 +1,15 @@
-'use client'
+﻿'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import RunStatusBadge from '@/components/agents/RunStatusBadge'
 import SpanTable from '@/components/agents/SpanTable'
+import SpanWaterfall from '@/components/agents/SpanWaterfall'
 import { useAgentRun } from '@/hooks/useAgents'
 import { relativeTime } from '@/lib/utils'
 
 function formatDuration(startedAt: string, endedAt: string | null): string {
-  if (!endedAt) return '—'
+  if (!endedAt) return 'â€”'
   const ms = new Date(endedAt).getTime() - new Date(startedAt).getTime()
   if (ms < 1_000) return `${ms}ms`
   if (ms < 60_000) return `${(ms / 1_000).toFixed(1)}s`
@@ -16,7 +17,7 @@ function formatDuration(startedAt: string, endedAt: string | null): string {
 }
 
 function formatCost(usd: number | null): string {
-  if (usd === null) return '—'
+  if (usd === null) return 'â€”'
   if (usd === 0) return '$0.00'
   if (usd < 0.001) return `$${usd.toFixed(6)}`
   if (usd < 0.01) return `$${usd.toFixed(4)}`
@@ -126,7 +127,7 @@ export default function RunDetailPage({ params }: PageProps) {
               Total tokens
             </p>
             <p className="mt-1 text-sm text-gray-900 dark:text-slate-100">
-              {run.totalTokens?.toLocaleString() ?? '—'}
+              {run.totalTokens?.toLocaleString() ?? 'â€”'}
             </p>
           </div>
           <div>
@@ -139,6 +140,15 @@ export default function RunDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Span waterfall */}
+      {spans.length > 0 && (
+        <SpanWaterfall
+          spans={spans}
+          runStartedAt={run.startedAt}
+          runEndedAt={run.endedAt}
+        />
+      )}
 
       {/* Spans section */}
       <div>
@@ -153,3 +163,4 @@ export default function RunDetailPage({ params }: PageProps) {
     </div>
   )
 }
+
