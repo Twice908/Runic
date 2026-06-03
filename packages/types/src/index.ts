@@ -1,6 +1,16 @@
 export type PlanType = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE'
 
-export type AlertType = 'error_rate' | 'response_time' | 'uptime' | 'rate_limit_spike'
+export type AlertType =
+  | 'error_rate'
+  | 'response_time'
+  | 'uptime'
+  | 'rate_limit_spike'
+  | 'drift_detected'
+  | 'key_missing_in_env'
+  | 'rotation_overdue'
+  | 'agent_error_rate'
+  | 'agent_token_threshold'
+  | 'agent_execution_time'
 
 export type AlertChannel = 'email' | 'slack'
 
@@ -119,6 +129,10 @@ export interface ErrorGroup {
   resolvedAt?: string | null
 }
 
+export interface AgentAlertMetrics {
+  timeWindowMinutes?: number
+}
+
 export interface AlertRule {
   id: string
   type: AlertType
@@ -129,6 +143,7 @@ export interface AlertRule {
   route?: string
   active: boolean
   lastFired?: string
+  agentMetrics?: AgentAlertMetrics | null
 }
 
 export interface AlertHistoryEntry {
@@ -141,6 +156,7 @@ export interface AlertHistoryEntry {
   message: string
   channel: string
   sentAt: string
+  agentRunId?: string | null
 }
 
 export interface UptimeCheck {

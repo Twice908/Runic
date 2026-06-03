@@ -1,12 +1,23 @@
 ﻿'use client'
 
+import { useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, GitBranch, LayoutGrid, Network } from 'lucide-react'
 import RunStatusBadge from '@/components/agents/RunStatusBadge'
 import SpanTable from '@/components/agents/SpanTable'
 import SpanWaterfall from '@/components/agents/SpanWaterfall'
+import SpanDependencyGraph from '@/components/agents/SpanDependencyGraph'
+import SpanParallelSwarm from '@/components/agents/SpanParallelSwarm'
 import { useAgentRun } from '@/hooks/useAgents'
 import { relativeTime } from '@/lib/utils'
+
+type SpanView = 'timeline' | 'graph' | 'swarm'
+
+const SPAN_VIEWS: { id: SpanView; label: string; icon: typeof LayoutGrid }[] = [
+  { id: 'timeline', label: 'Timeline', icon: LayoutGrid },
+  { id: 'graph', label: 'Graph', icon: GitBranch },
+  { id: 'swarm', label: 'Parallel', icon: Network },
+]
 
 function formatDuration(startedAt: string, endedAt: string | null): string {
   if (!endedAt) return 'â€”'
@@ -33,6 +44,7 @@ export default function RunDetailPage({ params }: PageProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const projectId = searchParams.get('project') ?? ''
+  const [spanView, setSpanView] = useState<SpanView>('timeline')
 
   const { data, isLoading, error } = useAgentRun(projectId, runId)
 
@@ -141,13 +153,46 @@ export default function RunDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Span waterfall */}
+      {/* Span visualizations — switchable between timeline, dependency graph, and parallel view */}
       {spans.length > 0 && (
-        <SpanWaterfall
-          spans={spans}
-          runStartedAt={run.startedAt}
-          runEndedAt={run.endedAt}
-        />
+        <div className="space-y-3">
+          <div className="inline-flex rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-1">
+            {SPAN_VIEWS.map(({ id, label, icon: Icon }) => {
+              const active = spanView === id
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSpanView(id)}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active
+                      ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 shadow-sm'
+                      : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                  }`}
+                  aria-pressed={active}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+
+          {spanView === 'timeline' && (
+            <SpanWaterfall
+              spans={spans}
+              runStartedAt={run.startedAt}
+              runEndedAt={run.endedAt}
+            />
+          )}
+          {spanView === 'graph' && <SpanDependencyGraph spans={spans} />}
+          {spanView === 'swarm' && (
+            <SpanParallelSwarm
+              spans={spans}
+              runStartedAt={run.startedAt}
+              runEndedAt={run.endedAt}
+            />
+          )}
+        </div>
       )}
 
       {/* Spans section */}

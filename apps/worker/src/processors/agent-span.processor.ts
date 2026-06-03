@@ -3,6 +3,7 @@ import type { ConnectionOptions, Job } from 'bullmq'
 import pino from 'pino'
 import { prisma, Prisma } from '@pulse/db'
 import { redis } from '../lib/redis'
+import { evaluateAgentRunAlerts } from '../lib/alert-evaluator'
 
 const logger = pino({ name: 'agent-span-processor' })
 
@@ -197,6 +198,14 @@ async function handleRunEnd(data: AgentSpanJobData): Promise<void> {
         spanCount: updatedRun._count.spans,
       }),
     )
+
+    evaluateAgentRunAlerts(projectId, runId, {
+      totalTokens: updatedRun.totalTokens,
+      startedAt: updatedRun.startedAt,
+      endedAt: updatedRun.endedAt,
+    }).catch((err: unknown) => {
+      logger.error({ runId, err }, 'Failed to evaluate agent run alerts')
+    })
   }
 }
 

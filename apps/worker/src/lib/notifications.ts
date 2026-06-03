@@ -15,6 +15,7 @@ export interface NotificationPayload {
   triggeredValue: number
   threshold: number
   message: string
+  agentRunId?: string
 }
 
 export async function dispatch(payload: NotificationPayload): Promise<void> {
@@ -28,6 +29,7 @@ export async function dispatch(payload: NotificationPayload): Promise<void> {
       message: payload.message,
       channel: payload.channel,
       destination: payload.destination,
+      agentRunId: payload.agentRunId ?? null,
     },
   })
 

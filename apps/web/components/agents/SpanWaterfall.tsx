@@ -83,16 +83,16 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
 
   return (
     <>
-      <div className="rounded-xl border border-slate-700 bg-slate-900 shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-slate-700 dark:bg-slate-900">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-slate-700 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <h2 className="text-sm font-semibold text-slate-100">
+        <div className="px-4 py-3 border-b border-gray-200 flex flex-wrap items-center gap-x-4 gap-y-2 dark:border-slate-700">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-slate-100">
             Timeline
-            <span className="ml-2 text-slate-500 font-normal text-xs">
+            <span className="ml-2 text-gray-400 font-normal text-xs dark:text-slate-500">
               {sorted.length} span{sorted.length !== 1 ? 's' : ''}
             </span>
           </h2>
-          <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
+          <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-slate-400">
             {Object.entries(GANTT_LABELS).map(([type, label]) => (
               <span key={type} className="flex items-center gap-1.5">
                 <span
@@ -117,7 +117,7 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
               {RULER_FRACTIONS.map((f) => (
                 <span
                   key={f}
-                  className="absolute text-[10px] text-slate-500 font-mono -translate-x-1/2 select-none"
+                  className="absolute text-[10px] text-gray-400 font-mono -translate-x-1/2 select-none dark:text-slate-500"
                   style={{ left: `${f * 100}%` }}
                 >
                   {formatMs(Math.round(f * totalDurationMs))}
@@ -142,7 +142,7 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
                   {/* Name label */}
                   <div className="w-36 sm:w-44 flex-shrink-0 pr-3">
                     <span
-                      className="block text-[11px] text-slate-400 truncate text-right leading-tight group-hover:text-slate-200 transition-colors"
+                      className="block text-[11px] text-gray-400 truncate text-right leading-tight group-hover:text-gray-700 transition-colors dark:text-slate-400 dark:group-hover:text-slate-200"
                       title={span.name}
                     >
                       {span.name}
@@ -151,14 +151,14 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
 
                   {/* Track */}
                   <div
-                    className="relative flex-1 h-6 bg-slate-800/60 rounded-sm"
+                    className="relative flex-1 h-6 bg-gray-100 rounded-sm dark:bg-slate-800/60"
                     onMouseLeave={() => setHovered(null)}
                   >
                     {/* Gridlines */}
                     {[0.25, 0.5, 0.75].map((f) => (
                       <div
                         key={f}
-                        className="absolute inset-y-0 w-px bg-slate-700/50 pointer-events-none"
+                        className="absolute inset-y-0 w-px bg-gray-300/50 pointer-events-none dark:bg-slate-700/50"
                         style={{ left: `${f * 100}%` }}
                       />
                     ))}
@@ -168,7 +168,7 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
                       type="button"
                       className={`absolute inset-y-1 rounded-sm cursor-pointer transition-opacity focus:outline-none ${
                         isSelected
-                          ? 'ring-2 ring-white/50 ring-offset-1 ring-offset-slate-900'
+                          ? 'ring-2 ring-gray-800/50 ring-offset-1 ring-offset-white dark:ring-white/50 dark:ring-offset-slate-900'
                           : ''
                       }`}
                       style={{
@@ -186,7 +186,7 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
                       aria-label={`Select span: ${span.name}`}
                     />
 
-                    {/* Duration inside bar (only when bar is wide enough) */}
+                    {/* Duration inside bar */}
                     {span.durationMs !== null && widthPct > 10 && (
                       <span
                         className="absolute inset-y-0 flex items-center px-1.5 text-[10px] font-mono text-white/90 pointer-events-none overflow-hidden"
@@ -195,12 +195,11 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
                         {formatMs(span.durationMs)}
                       </span>
                     )}
-
                   </div>
 
-                  {/* Duration outside bar (when bar too narrow) */}
+                  {/* Duration outside bar */}
                   {span.durationMs !== null && widthPct <= 10 && (
-                    <span className="ml-2 text-[10px] font-mono text-slate-500 flex-shrink-0 w-12 leading-tight">
+                    <span className="ml-2 text-[10px] font-mono text-gray-400 flex-shrink-0 w-12 leading-tight dark:text-slate-500">
                       {formatMs(span.durationMs)}
                     </span>
                   )}
@@ -211,9 +210,9 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
         </div>
       </div>
 
-      {/* Fixed-position tooltip — not clipped by any ancestor overflow */}
+      {/* Fixed-position tooltip */}
       {hovered && (() => {
-        const TOOLTIP_W = 208 // w-52 = 13rem
+        const TOOLTIP_W = 208
         const GAP = 8
         const showBelow = hovered.barTop < 150
         const top = showBelow
@@ -222,27 +221,27 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
         const left = Math.max(GAP, Math.min(hovered.barLeft, window.innerWidth - TOOLTIP_W - GAP))
         return (
           <div
-            className="fixed z-50 w-52 rounded-lg bg-slate-800 border border-slate-600 shadow-2xl p-3 text-xs text-slate-200 pointer-events-none"
+            className="fixed z-50 w-52 rounded-lg bg-white border border-gray-200 shadow-2xl p-3 text-xs text-gray-700 pointer-events-none dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
             style={{ top, left, transform: showBelow ? 'none' : 'translateY(-100%)' }}
           >
-            <p className="font-semibold text-slate-100 truncate mb-1.5">{hovered.span.name}</p>
-            <div className="space-y-0.5 text-slate-400">
+            <p className="font-semibold text-gray-900 truncate mb-1.5 dark:text-slate-100">{hovered.span.name}</p>
+            <div className="space-y-0.5 text-gray-500 dark:text-slate-400">
               <p>
                 Type:{' '}
-                <span className="text-slate-200">
+                <span className="text-gray-700 dark:text-slate-200">
                   {GANTT_LABELS[hovered.span.spanType] ?? hovered.span.spanType}
                 </span>
               </p>
               {hovered.span.durationMs !== null && (
                 <p>
                   Duration:{' '}
-                  <span className="text-slate-200">{formatMs(hovered.span.durationMs)}</span>
+                  <span className="text-gray-700 dark:text-slate-200">{formatMs(hovered.span.durationMs)}</span>
                 </p>
               )}
               {hovered.span.totalTokens !== null && (
                 <p>
                   Tokens:{' '}
-                  <span className="text-slate-200">
+                  <span className="text-gray-700 dark:text-slate-200">
                     {hovered.span.totalTokens.toLocaleString()}
                   </span>
                 </p>
@@ -253,10 +252,10 @@ export default function SpanWaterfall({ spans, runStartedAt, runEndedAt }: SpanW
                   <span
                     className={
                       hovered.span.statusCode === 'error'
-                        ? 'text-red-400'
+                        ? 'text-red-500 dark:text-red-400'
                         : hovered.span.statusCode === 'success'
-                          ? 'text-green-400'
-                          : 'text-slate-200'
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-gray-700 dark:text-slate-200'
                     }
                   >
                     {hovered.span.statusCode}

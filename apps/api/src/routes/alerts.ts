@@ -4,8 +4,26 @@ import { prisma } from '@pulse/db'
 import { verifyClerkJwt } from '../lib/auth'
 import { env } from '../env'
 
-const ALERT_TYPES = ['uptime', 'error_rate', 'response_time', 'rate_limit_spike', 'drift_detected', 'key_missing_in_env', 'rotation_overdue'] as const
+const ALERT_TYPES = [
+  'uptime',
+  'error_rate',
+  'response_time',
+  'rate_limit_spike',
+  'drift_detected',
+  'key_missing_in_env',
+  'rotation_overdue',
+  'agent_error_rate',
+  'agent_token_threshold',
+  'agent_execution_time',
+] as const
+
 const ALERT_CHANNELS = ['email', 'slack'] as const
+
+const agentMetricsSchema = z
+  .object({
+    timeWindowMinutes: z.number().int().min(1).max(1440).optional(),
+  })
+  .optional()
 
 const createAlertSchema = z
   .object({
@@ -16,6 +34,7 @@ const createAlertSchema = z
     url: z.string().url().optional(),
     route: z.string().optional(),
     active: z.boolean().default(true),
+    agentMetrics: agentMetricsSchema,
   })
   .superRefine((val, ctx) => {
     if (val.type === 'uptime' && !val.url) {
@@ -27,6 +46,12 @@ const createAlertSchema = z
     if (val.channel === 'slack' && !val.destination.startsWith('https://hooks.slack.com/')) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'destination must be a Slack webhook URL (https://hooks.slack.com/...)', path: ['destination'] })
     }
+    if (val.type === 'agent_error_rate' && (val.threshold < 0 || val.threshold > 100)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'threshold must be between 0 and 100 for agent error rate alerts', path: ['threshold'] })
+    }
+    if ((val.type === 'agent_token_threshold' || val.type === 'agent_execution_time') && val.threshold <= 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'threshold must be greater than 0', path: ['threshold'] })
+    }
   })
 
 const patchAlertSchema = z.object({
@@ -34,6 +59,7 @@ const patchAlertSchema = z.object({
   threshold: z.number().min(0).optional(),
   destination: z.string().min(1).optional(),
   url: z.string().url().optional(),
+  agentMetrics: agentMetricsSchema,
 })
 
 const PAGE_SIZE = 20
@@ -78,6 +104,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
         route: a.route ?? undefined,
         active: a.active,
         lastFired: a.events[0]?.sentAt.toISOString() ?? undefined,
+        agentMetrics: a.agentMetrics ?? undefined,
       })),
     })
   })
@@ -106,6 +133,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
         url: parsed.data.url ?? null,
         route: parsed.data.route ?? null,
         active: parsed.data.active,
+        agentMetrics: parsed.data.agentMetrics ?? null,
       },
     })
 
@@ -120,6 +148,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
         url: alert.url ?? undefined,
         route: alert.route ?? undefined,
         active: alert.active,
+        agentMetrics: alert.agentMetrics ?? undefined,
       },
     })
   })
@@ -157,6 +186,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
         url: updated.url ?? undefined,
         route: updated.route ?? undefined,
         active: updated.active,
+        agentMetrics: updated.agentMetrics ?? undefined,
       },
     })
   })
@@ -214,6 +244,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
         message: e.message,
         channel: e.channel,
         sentAt: e.sentAt.toISOString(),
+        agentRunId: e.agentRunId ?? null,
       })),
       total,
       page,

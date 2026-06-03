@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAlerts, useAlertHistory } from '@/hooks/useAlerts'
-import type { AlertRule, AlertType, AlertChannel } from '@pulse/types'
+import type { AlertRule, AlertType, AlertChannel, AlertHistoryEntry } from '@pulse/types'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -15,9 +15,27 @@ function maskDestination(channel: string, destination: string): string {
 }
 
 function formatValue(type: string, value: number): string {
-  if (type === 'error_rate') return `${value.toFixed(1)}%`
-  if (type === 'response_time') return `${value}ms`
+  if (type === 'error_rate' || type === 'agent_error_rate') return `${value.toFixed(1)}%`
+  if (type === 'response_time' || type === 'agent_execution_time') return `${value.toLocaleString()}ms`
+  if (type === 'agent_token_threshold') return `${value.toLocaleString()} tokens`
   return String(value)
+}
+
+function formatThreshold(alert: AlertRule): string {
+  switch (alert.type) {
+    case 'error_rate':
+    case 'agent_error_rate':
+      return `${alert.threshold}%`
+    case 'rate_limit_spike':
+      return `${alert.threshold} blocks / 5 min`
+    case 'agent_token_threshold':
+      return `${alert.threshold.toLocaleString()} tokens`
+    case 'response_time':
+    case 'agent_execution_time':
+      return `${alert.threshold.toLocaleString()}ms`
+    default:
+      return String(alert.threshold)
+  }
 }
 
 function relativeTime(iso: string): string {
@@ -30,19 +48,21 @@ function relativeTime(iso: string): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-// ── type cards ────────────────────────────────────────────────────────────────
+// ── type helpers ──────────────────────────────────────────────────────────────
 
 type DriftAlertType = 'drift_detected' | 'key_missing_in_env' | 'rotation_overdue'
-
-const DRIFT_DESCRIPTIONS: Record<DriftAlertType, string> = {
-  drift_detected: 'Alert when any environment drifts from baseline',
-  key_missing_in_env: 'Alert when a specific key is missing from any environment',
-  rotation_overdue: 'Alert when a key exceeds its rotation schedule',
-}
+type AgentAlertType = 'agent_error_rate' | 'agent_token_threshold' | 'agent_execution_time'
+type AnyAlertType = AlertType | DriftAlertType | AgentAlertType
 
 function isDriftAlert(t: string): t is DriftAlertType {
   return t === 'drift_detected' || t === 'key_missing_in_env' || t === 'rotation_overdue'
 }
+
+function isAgentAlert(t: string): t is AgentAlertType {
+  return t === 'agent_error_rate' || t === 'agent_token_threshold' || t === 'agent_execution_time'
+}
+
+// ── type cards ────────────────────────────────────────────────────────────────
 
 interface TypeCardProps {
   value: string
@@ -53,7 +73,7 @@ interface TypeCardProps {
   description: string
 }
 
-function TypeCard({ value, selected, onClick, icon, title, description }: TypeCardProps) {
+function TypeCard({ selected, onClick, icon, title, description }: TypeCardProps) {
   return (
     <button
       onClick={onClick}
@@ -95,11 +115,7 @@ function AlertCard({ alert, projectId, onToggle, onDelete, deleting, toggling }:
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: alert.type,
-          channel: alert.channel,
-          destination: alert.destination,
-        }),
+        body: JSON.stringify({ type: alert.type, channel: alert.channel, destination: alert.destination }),
       })
       const json = (await res.json()) as { success?: boolean; error?: { message?: string } }
       if (res.ok && json.success) {
@@ -120,18 +136,23 @@ function AlertCard({ alert, projectId, onToggle, onDelete, deleting, toggling }:
     error_rate: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
     response_time: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
     rate_limit_spike: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+    agent_error_rate: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+    agent_token_threshold: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300',
+    agent_execution_time: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300',
   }
   const channelBadge: Record<string, string> = {
     email: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
     slack: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
   }
 
+  const agentWindow = alert.agentMetrics?.timeWindowMinutes
+
   return (
     <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm flex items-start justify-between gap-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${typeBadge[alert.type] ?? 'bg-gray-100 text-gray-600'}`}>
-            {alert.type.replace('_', ' ')}
+            {alert.type.replace(/_/g, ' ')}
           </span>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${channelBadge[alert.channel] ?? 'bg-gray-100 text-gray-600'}`}>
             {alert.channel === 'slack' ? 'Slack' : 'Email'}
@@ -146,14 +167,10 @@ function AlertCard({ alert, projectId, onToggle, onDelete, deleting, toggling }:
         {alert.type === 'uptime' && alert.url && (
           <p className="text-xs text-gray-400 dark:text-slate-400 truncate mt-0.5">{alert.url}</p>
         )}
-        {alert.type !== 'uptime' && (
+        {alert.type !== 'uptime' && !isDriftAlert(alert.type) && (
           <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5">
-            Threshold:{' '}
-            {alert.type === 'error_rate'
-              ? `${alert.threshold}%`
-              : alert.type === 'rate_limit_spike'
-              ? `${alert.threshold} blocks / 5 min`
-              : `${alert.threshold}ms`}
+            Threshold: {formatThreshold(alert)}
+            {alert.type === 'agent_error_rate' && agentWindow ? ` · ${agentWindow} min window` : ''}
             {alert.route ? ` · Route: ${alert.route}` : ''}
           </p>
         )}
@@ -212,10 +229,7 @@ function AlertCard({ alert, projectId, onToggle, onDelete, deleting, toggling }:
             >
               {deleting === alert.id ? 'Deleting…' : 'Confirm'}
             </button>
-            <button
-              onClick={() => setConfirmDelete(false)}
-              className="text-xs text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-400 hover:text-gray-600">
               Cancel
             </button>
           </div>
@@ -242,28 +256,33 @@ interface CreateFormProps {
 
 function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [alertType, setAlertType] = useState<AlertType | DriftAlertType>('uptime')
+  const [alertType, setAlertType] = useState<AnyAlertType>('uptime')
   const [channel, setChannel] = useState<AlertChannel>('email')
   const [threshold, setThreshold] = useState('')
   const [url, setUrl] = useState('')
   const [route, setRoute] = useState('')
   const [destination, setDestination] = useState('')
+  const [timeWindowMinutes, setTimeWindowMinutes] = useState('60')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const skipSettings = isDriftAlert(alertType)
 
   async function submit() {
     setSubmitting(true)
     setError(null)
     try {
-      const drift = isDriftAlert(alertType)
       const body: Record<string, unknown> = {
         type: alertType,
         channel,
         destination,
-        threshold: drift || alertType === 'uptime' ? 0 : parseFloat(threshold),
+        threshold: skipSettings || alertType === 'uptime' ? 0 : parseFloat(threshold),
       }
       if (alertType === 'uptime') body['url'] = url
       if (alertType === 'response_time' && route) body['route'] = route
+      if (alertType === 'agent_error_rate') {
+        body['agentMetrics'] = { timeWindowMinutes: parseInt(timeWindowMinutes, 10) || 60 }
+      }
 
       const res = await fetch(`/api/projects/${projectId}/alerts`, {
         method: 'POST',
@@ -281,6 +300,10 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
       setSubmitting(false)
     }
   }
+
+  const inputClass =
+    'w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+  const labelClass = 'block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1'
 
   return (
     <div className="rounded-xl border border-indigo-200 dark:border-slate-600 bg-indigo-50/40 dark:bg-slate-800 p-6 mt-4 space-y-5">
@@ -303,28 +326,48 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
       {step === 1 && (
         <div className="space-y-4">
           <p className="text-sm font-medium text-gray-700 dark:text-slate-100">What do you want to monitor?</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <TypeCard value="uptime" selected={alertType === 'uptime'} onClick={() => setAlertType('uptime')}
-              icon="🌐" title="Uptime Monitor" description="Ping a URL every 60s and alert when it goes down" />
-            <TypeCard value="error_rate" selected={alertType === 'error_rate'} onClick={() => setAlertType('error_rate')}
-              icon="🔴" title="Error Rate" description="Alert when error rate exceeds a threshold" />
-            <TypeCard value="response_time" selected={alertType === 'response_time'} onClick={() => setAlertType('response_time')}
-              icon="⏱" title="Response Time" description="Alert when P99 latency exceeds a threshold" />
-            <TypeCard value="rate_limit_spike" selected={alertType === 'rate_limit_spike'} onClick={() => setAlertType('rate_limit_spike')}
-              icon="🛡" title="Rate Limit Spike" description="Alert when blocked requests spike or a key nears its limit" />
-            <TypeCard value="drift_detected" selected={alertType === 'drift_detected'} onClick={() => setAlertType('drift_detected')}
-              icon="🧬" title="Drift Detected" description="Alert when any environment drifts from baseline" />
-            <TypeCard value="key_missing_in_env" selected={alertType === 'key_missing_in_env'} onClick={() => setAlertType('key_missing_in_env')}
-              icon="🔑" title="Key Missing in Environment" description="Alert when a specific key is missing from any environment" />
-            <TypeCard value="rotation_overdue" selected={alertType === 'rotation_overdue'} onClick={() => setAlertType('rotation_overdue')}
-              icon="🔄" title="Rotation Overdue" description="Alert when a key exceeds its rotation schedule" />
+
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">HTTP / Observe</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <TypeCard value="uptime" selected={alertType === 'uptime'} onClick={() => setAlertType('uptime')}
+                icon="🌐" title="Uptime Monitor" description="Ping a URL every 60s and alert when it goes down" />
+              <TypeCard value="error_rate" selected={alertType === 'error_rate'} onClick={() => setAlertType('error_rate')}
+                icon="🔴" title="Error Rate" description="Alert when HTTP error rate exceeds a threshold" />
+              <TypeCard value="response_time" selected={alertType === 'response_time'} onClick={() => setAlertType('response_time')}
+                icon="⏱" title="Response Time" description="Alert when P99 latency exceeds a threshold" />
+              <TypeCard value="rate_limit_spike" selected={alertType === 'rate_limit_spike'} onClick={() => setAlertType('rate_limit_spike')}
+                icon="🛡" title="Rate Limit Spike" description="Alert when blocked requests spike in 5 minutes" />
+            </div>
           </div>
-          {isDriftAlert(alertType) && (
-            <p className="text-sm text-gray-600">{DRIFT_DESCRIPTIONS[alertType]}</p>
-          )}
+
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Agent / PAO</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <TypeCard value="agent_error_rate" selected={alertType === 'agent_error_rate'} onClick={() => setAlertType('agent_error_rate')}
+                icon="🤖" title="Agent Error Rate" description="Alert when % of failed agent runs exceeds threshold" />
+              <TypeCard value="agent_token_threshold" selected={alertType === 'agent_token_threshold'} onClick={() => setAlertType('agent_token_threshold')}
+                icon="🪙" title="Token Threshold" description="Alert when a single run exceeds a token limit" />
+              <TypeCard value="agent_execution_time" selected={alertType === 'agent_execution_time'} onClick={() => setAlertType('agent_execution_time')}
+                icon="⚡" title="Execution Time" description="Alert when a run duration exceeds a time limit" />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Drift</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <TypeCard value="drift_detected" selected={alertType === 'drift_detected'} onClick={() => setAlertType('drift_detected')}
+                icon="🧬" title="Drift Detected" description="Alert when any environment drifts from baseline" />
+              <TypeCard value="key_missing_in_env" selected={alertType === 'key_missing_in_env'} onClick={() => setAlertType('key_missing_in_env')}
+                icon="🔑" title="Key Missing" description="Alert when a key is missing from any environment" />
+              <TypeCard value="rotation_overdue" selected={alertType === 'rotation_overdue'} onClick={() => setAlertType('rotation_overdue')}
+                icon="🔄" title="Rotation Overdue" description="Alert when a key exceeds its rotation schedule" />
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <button
-              onClick={() => setStep(isDriftAlert(alertType) ? 3 : 2)}
+              onClick={() => setStep(skipSettings ? 3 : 2)}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
             >
               Next →
@@ -336,79 +379,89 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
       {/* Step 2: settings */}
       {step === 2 && (
         <div className="space-y-4">
-          <p className="text-sm font-medium text-gray-700">Configure your {alertType.replace('_', ' ')} alert</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-slate-100">
+            Configure your {alertType.replace(/_/g, ' ')} alert
+          </p>
+
           {alertType === 'uptime' && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">URL to monitor</label>
-              <input
-                type="url"
-                placeholder="https://api.example.com/health"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <label className={labelClass}>URL to monitor</label>
+              <input type="url" placeholder="https://api.example.com/health" value={url}
+                onChange={(e) => setUrl(e.target.value)} className={inputClass} />
             </div>
           )}
+
           {alertType === 'error_rate' && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">Error rate threshold (%)</label>
-              <input
-                type="number"
-                min={1}
-                max={100}
-                placeholder="10"
-                value={threshold}
-                onChange={(e) => setThreshold(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">Alert fires when error rate exceeds this % over the last 5 minutes</p>
+              <label className={labelClass}>Error rate threshold (%)</label>
+              <input type="number" min={1} max={100} placeholder="10" value={threshold}
+                onChange={(e) => setThreshold(e.target.value)} className={inputClass} />
+              <p className="text-xs text-gray-400 mt-1">Alert fires when HTTP error rate exceeds this % over the last 5 minutes</p>
             </div>
           )}
+
           {alertType === 'response_time' && (
             <>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">P99 latency threshold (ms)</label>
-                <input
-                  type="number"
-                  min={1}
-                  placeholder="1000"
-                  value={threshold}
-                  onChange={(e) => setThreshold(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <label className={labelClass}>P99 latency threshold (ms)</label>
+                <input type="number" min={1} placeholder="1000" value={threshold}
+                  onChange={(e) => setThreshold(e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">Route filter (optional)</label>
-                <input
-                  type="text"
-                  placeholder="/api/users"
-                  value={route}
-                  onChange={(e) => setRoute(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <label className={labelClass}>Route filter (optional)</label>
+                <input type="text" placeholder="/api/users" value={route}
+                  onChange={(e) => setRoute(e.target.value)} className={inputClass} />
                 <p className="text-xs text-gray-400 mt-1">Leave blank to monitor all routes</p>
               </div>
             </>
           )}
+
           {alertType === 'rate_limit_spike' && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
-                Block count threshold (per 5 minutes)
-              </label>
-              <input
-                type="number"
-                min={1}
-                placeholder="100"
-                value={threshold}
-                onChange={(e) => setThreshold(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <label className={labelClass}>Block count threshold (per 5 minutes)</label>
+              <input type="number" min={1} placeholder="100" value={threshold}
+                onChange={(e) => setThreshold(e.target.value)} className={inputClass} />
               <p className="text-xs text-gray-400 mt-1">
-                Alert fires when blocked requests exceed this count in 5 minutes, or when any single
-                key reaches 90% of its limit.
+                Alert fires when blocked requests exceed this count in 5 minutes.
               </p>
             </div>
           )}
+
+          {alertType === 'agent_error_rate' && (
+            <>
+              <div>
+                <label className={labelClass}>Error rate threshold (%)</label>
+                <input type="number" min={1} max={100} placeholder="20" value={threshold}
+                  onChange={(e) => setThreshold(e.target.value)} className={inputClass} />
+                <p className="text-xs text-gray-400 mt-1">Alert fires when more than this % of agent runs fail</p>
+              </div>
+              <div>
+                <label className={labelClass}>Time window (minutes)</label>
+                <input type="number" min={1} max={1440} placeholder="60" value={timeWindowMinutes}
+                  onChange={(e) => setTimeWindowMinutes(e.target.value)} className={inputClass} />
+                <p className="text-xs text-gray-400 mt-1">Look back window for calculating the error rate</p>
+              </div>
+            </>
+          )}
+
+          {alertType === 'agent_token_threshold' && (
+            <div>
+              <label className={labelClass}>Token limit per run</label>
+              <input type="number" min={1} placeholder="10000" value={threshold}
+                onChange={(e) => setThreshold(e.target.value)} className={inputClass} />
+              <p className="text-xs text-gray-400 mt-1">Alert fires immediately when a run exceeds this many tokens</p>
+            </div>
+          )}
+
+          {alertType === 'agent_execution_time' && (
+            <div>
+              <label className={labelClass}>Execution time limit (ms)</label>
+              <input type="number" min={1} placeholder="300000" value={threshold}
+                onChange={(e) => setThreshold(e.target.value)} className={inputClass} />
+              <p className="text-xs text-gray-400 mt-1">Alert fires immediately when a run takes longer than this (e.g. 300000 = 5 minutes)</p>
+            </div>
+          )}
+
           <div className="flex justify-between">
             <button onClick={() => setStep(1)} className="text-sm text-gray-500 hover:text-gray-700">← Back</button>
             <button
@@ -443,36 +496,22 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
 
           {channel === 'email' && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">Email address</label>
-              <input
-                type="email"
-                placeholder="you@example.com"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <label className={labelClass}>Email address</label>
+              <input type="email" placeholder="you@example.com" value={destination}
+                onChange={(e) => setDestination(e.target.value)} className={inputClass} />
             </div>
           )}
           {channel === 'slack' && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
+              <label className={labelClass}>
                 Slack webhook URL{' '}
-                <a
-                  href="https://api.slack.com/messaging/webhooks"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-indigo-500 underline"
-                >
+                <a href="https://api.slack.com/messaging/webhooks" target="_blank" rel="noopener noreferrer"
+                  className="text-indigo-500 underline">
                   How to get this
                 </a>
               </label>
-              <input
-                type="url"
-                placeholder="https://hooks.slack.com/services/..."
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <input type="url" placeholder="https://hooks.slack.com/services/..." value={destination}
+                onChange={(e) => setDestination(e.target.value)} className={inputClass} />
             </div>
           )}
 
@@ -480,7 +519,7 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
 
           <div className="flex justify-between">
             <button
-              onClick={() => setStep(isDriftAlert(alertType) ? 1 : 2)}
+              onClick={() => setStep(skipSettings ? 1 : 2)}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
               ← Back
@@ -498,6 +537,90 @@ function CreateForm({ projectId, onCreated, onCancel }: CreateFormProps) {
 
       <button onClick={onCancel} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
     </div>
+  )
+}
+
+// ── history row ───────────────────────────────────────────────────────────────
+
+interface HistoryRowProps {
+  entry: AlertHistoryEntry
+  projectId: string
+  onDeleteRequest: (id: string) => void
+  confirmId: string | null
+  deletingId: string | null
+  onConfirm: (id: string) => void
+  onCancel: () => void
+}
+
+function HistoryRow({ entry, projectId, onDeleteRequest, confirmId, deletingId, onConfirm, onCancel }: HistoryRowProps) {
+  return (
+    <tr className="hover:bg-gray-50 dark:hover:bg-slate-700 group">
+      <td className="px-4 py-3 text-gray-500 dark:text-slate-400 whitespace-nowrap">{relativeTime(entry.sentAt)}</td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <span className="text-xs font-medium text-gray-700 dark:text-slate-300">{entry.type.replace(/_/g, ' ')}</span>
+      </td>
+      <td className="px-4 py-3 text-gray-600 dark:text-slate-400 min-w-[240px] max-w-sm whitespace-normal leading-relaxed">
+        {entry.message}
+        {entry.agentRunId && (
+          <a
+            href={`/dashboard/agents/${entry.agentRunId}?project=${projectId}`}
+            className="ml-2 inline-flex items-center gap-1 rounded bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-mono"
+          >
+            {entry.agentRunId.slice(0, 8)}…
+          </a>
+        )}
+      </td>
+      <td className="px-4 py-3 font-medium text-red-600 whitespace-nowrap">{formatValue(entry.type, entry.triggeredValue)}</td>
+      <td className="px-4 py-3 text-gray-500 dark:text-slate-400 whitespace-nowrap">{formatValue(entry.type, entry.threshold)}</td>
+      <td className="px-4 py-3 capitalize text-gray-500 dark:text-slate-400 whitespace-nowrap">{entry.channel}</td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        {entry.alertStatus === 'active' && (
+          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />Active
+          </span>
+        )}
+        {entry.alertStatus === 'disabled' && (
+          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" />Disabled
+          </span>
+        )}
+        {entry.alertStatus === 'deleted' && (
+          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-gray-400 inline-block" />Deleted
+          </span>
+        )}
+      </td>
+      <td className="w-10 px-3 py-3 text-center">
+        <div className="relative inline-flex items-center justify-center">
+          {confirmId === entry.id ? (
+            <div className="absolute right-0 z-10 flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-slate-800 px-2.5 py-1.5 shadow-lg whitespace-nowrap">
+              <span className="text-xs text-gray-500 dark:text-slate-400">Delete this entry?</span>
+              <button
+                onClick={() => onConfirm(entry.id)}
+                disabled={deletingId === entry.id}
+                className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors"
+              >
+                {deletingId === entry.id ? '…' : 'Yes'}
+              </button>
+              <span className="text-gray-300 dark:text-slate-600">·</span>
+              <button onClick={onCancel} className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors">
+                No
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => onDeleteRequest(entry.id)}
+              title="Delete history entry"
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-gray-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66H14.5a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0zM4.544 3.5l.852 10.615a1 1 0 0 0 .997.885h6.214a1 1 0 0 0 .997-.885L14.456 3.5z" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
   )
 }
 
@@ -543,23 +666,9 @@ export default function AlertsPage() {
     },
   })
 
-  function handleToggle(id: string, active: boolean) {
-    toggleMutation.mutate({ id, active })
-  }
-
-  function handleDelete(id: string) {
-    deleteMutation.mutate(id)
-  }
-
-  function handleDeleteHistory(historyId: string) {
-    deleteHistoryMutation.mutate(historyId)
-  }
-
   const toggling = toggleMutation.isPending ? toggleMutation.variables?.id ?? null : null
   const deleting = deleteMutation.isPending ? deleteMutation.variables ?? null : null
-  const deletingHistory = deleteHistoryMutation.isPending
-    ? deleteHistoryMutation.variables ?? null
-    : null
+  const deletingHistory = deleteHistoryMutation.isPending ? deleteHistoryMutation.variables ?? null : null
 
   if (!projectId) {
     return (
@@ -614,8 +723,8 @@ export default function AlertsPage() {
                 key={alert.id}
                 alert={alert}
                 projectId={projectId}
-                onToggle={handleToggle}
-                onDelete={handleDelete}
+                onToggle={(id, active) => toggleMutation.mutate({ id, active })}
+                onDelete={(id) => deleteMutation.mutate(id)}
                 toggling={toggling}
                 deleting={deleting}
               />
@@ -652,70 +761,16 @@ export default function AlertsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
                   {history.map((entry) => (
-                    <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 group">
-                      <td className="px-4 py-3 text-gray-500 dark:text-slate-400 whitespace-nowrap">{relativeTime(entry.sentAt)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-xs font-medium text-gray-700 dark:text-slate-300">{entry.type.replace(/_/g, ' ')}</span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-slate-400 min-w-[240px] max-w-sm whitespace-normal leading-relaxed">{entry.message}</td>
-                      <td className="px-4 py-3 font-medium text-red-600 whitespace-nowrap">{formatValue(entry.type, entry.triggeredValue)}</td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-slate-400 whitespace-nowrap">{formatValue(entry.type, entry.threshold)}</td>
-                      <td className="px-4 py-3 capitalize text-gray-500 dark:text-slate-400 whitespace-nowrap">{entry.channel}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {entry.alertStatus === 'active' && (
-                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />
-                            Active
-                          </span>
-                        )}
-                        {entry.alertStatus === 'disabled' && (
-                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" />
-                            Disabled
-                          </span>
-                        )}
-                        {entry.alertStatus === 'deleted' && (
-                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-gray-400 inline-block" />
-                            Deleted
-                          </span>
-                        )}
-                      </td>
-                      {/* Fixed-width delete column — confirm state overlays via absolute, never shifts layout */}
-                      <td className="w-10 px-3 py-3 text-center">
-                        <div className="relative inline-flex items-center justify-center">
-                          {confirmDeleteHistory === entry.id ? (
-                            <div className="absolute right-0 z-10 flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-slate-800 px-2.5 py-1.5 shadow-lg whitespace-nowrap">
-                              <span className="text-xs text-gray-500 dark:text-slate-400">Delete this entry?</span>
-                              <button
-                                onClick={() => handleDeleteHistory(entry.id)}
-                                disabled={deletingHistory === entry.id}
-                                className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors"
-                              >
-                                {deletingHistory === entry.id ? '…' : 'Yes'}
-                              </button>
-                              <span className="text-gray-300 dark:text-slate-600">·</span>
-                              <button
-                                onClick={() => setConfirmDeleteHistory(null)}
-                                className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
-                              >
-                                No
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setConfirmDeleteHistory(entry.id)}
-                              title="Delete history entry"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-gray-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            >
-                              <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
-                                <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66H14.5a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0zM4.544 3.5l.852 10.615a1 1 0 0 0 .997.885h6.214a1 1 0 0 0 .997-.885L14.456 3.5z"/>
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                    <HistoryRow
+                      key={entry.id}
+                      entry={entry}
+                      projectId={projectId}
+                      onDeleteRequest={setConfirmDeleteHistory}
+                      confirmId={confirmDeleteHistory}
+                      deletingId={deletingHistory}
+                      onConfirm={(id) => deleteHistoryMutation.mutate(id)}
+                      onCancel={() => setConfirmDeleteHistory(null)}
+                    />
                   ))}
                 </tbody>
               </table>

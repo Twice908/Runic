@@ -82,21 +82,22 @@ model UptimeCheck {
 }
 
 model Alert {
-  id          String       @id @default(cuid())
-  projectId   String
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  type        String       // "uptime" | "error_rate" | "response_time"
-  threshold   Float
-  channel     String       // "email" | "slack"
-  destination String
-  active      Boolean      @default(true)
-  url         String?      // URL to ping for uptime alerts
-  route       String?      // optional route filter for response_time alerts
-  events      AlertEvent[]
+  id           String       @id @default(cuid())
+  projectId    String
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type         String
+  threshold    Float
+  channel      String
+  destination  String
+  active       Boolean      @default(true)
+  url          String?
+  route        String?
+  agentMetrics Json?
+  events       AlertEvent[]
 }
 
 model AlertEvent {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   alertId        String?
   projectId      String
   type           String
@@ -105,10 +106,12 @@ model AlertEvent {
   message        String
   channel        String
   destination    String
-  sentAt         DateTime @default(now())
+  sentAt         DateTime  @default(now())
+  agentRunId     String?
 
-  alert          Alert?   @relation(fields: [alertId], references: [id], onDelete: SetNull)
-  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  alert          Alert?    @relation(fields: [alertId], references: [id], onDelete: SetNull)
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agentRun       AgentRun? @relation(fields: [agentRunId], references: [id], onDelete: SetNull)
 }
 
 enum Plan {
@@ -253,8 +256,9 @@ model AgentRun {
   totalCostUsd Decimal?  @db.Decimal(10, 6)
   metadata     Json?
 
-  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  spans   AgentSpan[]
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  spans        AgentSpan[]
+  alertEvents  AlertEvent[]
 
   @@index([projectId, startedAt])
 }

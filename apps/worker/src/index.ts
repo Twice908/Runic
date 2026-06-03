@@ -7,6 +7,7 @@ import { processUptimeCheck } from './processors/uptime.processor'
 import { processObserveAlertsCheck } from './processors/observe-alerts.processor'
 import { processRateLimitEvent } from './processors/rate-limit-event.processor'
 import { startAgentSpanWorker } from './processors/agent-span.processor'
+import { processAgentAlertsCheck } from './processors/agent-alerts.processor'
 
 const logger = pino({ name: 'worker', level: env.NODE_ENV === 'production' ? 'info' : 'debug' })
 
@@ -23,6 +24,9 @@ const UPTIME_REPEAT_MS = 60_000
 
 const OBSERVE_ALERTS_JOB_NAME = 'observe-alerts-check'
 const OBSERVE_ALERTS_REPEAT_MS = 60_000
+
+const AGENT_ALERTS_JOB_NAME = 'agent-alerts-check'
+const AGENT_ALERTS_REPEAT_MS = 5 * 60_000
 
 // ── Ingest worker ────────────────────────────────────────────────────────────
 const ingestWorker = new Worker('ingest', processIngest, {
@@ -117,7 +121,39 @@ rateLimitEventWorker.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, error: err.message, stack: err.stack }, 'Rate-limit-event job failed')
 })
 
+// ── Agent-alerts repeatable worker ────────────────────────────────────────────
+const agentAlertsQueue = new Queue('agent-alerts', { connection })
+
+const agentAlertsWorker = new Worker(
+  'agent-alerts',
+  async () => {
+    await processAgentAlertsCheck()
+  },
+  { connection, concurrency: 1 },
+)
+
+agentAlertsWorker.on('failed', (job, err) => {
+  logger.error({ jobId: job?.id, error: err.message }, 'Agent-alerts job failed')
+})
+
+async function registerAgentAlertsJob(): Promise<void> {
+  const repeatableJobs = await agentAlertsQueue.getRepeatableJobs()
+  for (const job of repeatableJobs) {
+    if (job.name === AGENT_ALERTS_JOB_NAME) {
+      await agentAlertsQueue.removeRepeatableByKey(job.key)
+      logger.info({ key: job.key }, 'Removed stale agent-alerts repeatable job')
+    }
+  }
+
+  await agentAlertsQueue.add(AGENT_ALERTS_JOB_NAME, {}, { repeat: { every: AGENT_ALERTS_REPEAT_MS } })
+  logger.info({ repeatEveryMs: AGENT_ALERTS_REPEAT_MS }, 'Agent-alerts repeatable job registered')
+}
+
+registerAgentAlertsJob().catch((err: unknown) => {
+  logger.error({ err }, 'Failed to register agent-alerts repeatable job')
+})
+
 // ── Agent-span worker ─────────────────────────────────────────────────────────
 startAgentSpanWorker(connection)
 
-logger.info('Worker started — ingest + uptime + observe-alerts + rate-limit-events + agent-spans queues active')
+logger.info('Worker started — ingest + uptime + observe-alerts + rate-limit-events + agent-spans + agent-alerts queues active')
