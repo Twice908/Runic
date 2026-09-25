@@ -16,7 +16,7 @@
 - `packages/queue/` (existing index/exports) — add `driftQueue` (queue name `drift-diff`) export + `DriftJobData` type. ~15 lines.
 - `apps/web/components/Sidebar` (wherever Rate Limiter nav item lives) — add Drift nav entry pointing to `/dashboard/[projectId]/drift/overview`. ~5 lines.
 - `apps/worker/src/lib/alert-evaluator.ts` — add `evaluateDriftAlert()` triggered after diff worker finishes (optional in D-3). ~30 lines.
-- `.env.example` / `apps/drift-detector/.env` — add the 6 new `DRIFT_*` / `PULSE_DRIFT_*` vars. ~8 lines.
+- `.env.example` / `apps/drift-detector/.env` — add the 6 new `DRIFT_*` / `RUNIC_DRIFT_*` vars. ~8 lines.
 
 ## 3. READY TO IMPORT
 
@@ -32,7 +32,7 @@
 ## 4. BUILD FROM SCRATCH
 
 - `packages/sdk-drift/` — agent runtime: `Object.keys(process.env)` extractor, ignored-keys filter, regex validator, HTTPS POST to `/v1/snapshot`. No equivalent exists.
-- `packages/sdk-drift/bin/pulse-drift.ts` — `commander`/`yargs` CLI with `snapshot | watch | ci-check` subcommands. No CLI tooling in repo.
+- `packages/sdk-drift/bin/runic-drift.ts` — `commander`/`yargs` CLI with `snapshot | watch | ci-check` subcommands. No CLI tooling in repo.
 - Diff worker domain logic — baseline-vs-current set diff, KEY_RESTORED resolution, STALE_ROTATION clock check, DriftScore formula, idempotent open-event guard. Logic is novel.
 - Matrix RSC page (`apps/web/app/dashboard/[projectId]/drift/matrix/page.tsx`) — sticky row+col headers, cell drawer, CSV export. No comparable matrix UI in repo.
 - CTE-based matrix SQL query (<500ms for 10 envs × 200 keys). No multi-env pivot exists.
@@ -48,7 +48,7 @@
 4. **Implement `POST /v1/snapshot`.** Create `apps/drift-detector/src/routes/snapshot.ts` — validate `keys[]` (count>0, no `=`), trim+uppercase, upsert `DriftEnvironment`, insert `DriftManifest`, enqueue to `driftQueue`, return `{received, driftJobId}` 202. Mount in `index.ts`. Files: 2.
 5. **Diff worker (missing/extra only).** Create `apps/drift-detector/src/workers/diffWorker.ts` — load baseline + previous manifest, set diff, write/resolve `DriftEvent`, compute DriftScore (skip stale for D-1), update `DriftEnvironment.driftScore + lastSeenAt`. Files: 1.
 6. **SDK core.** Create `packages/sdk-drift/src/index.ts` + `packages/sdk-drift/src/extract.ts` — env key extraction (filter ignored list, regex validate) + HTTPS client posting names only. Files: 2.
-7. **CLI snapshot command.** Create `packages/sdk-drift/bin/pulse-drift.ts` wiring `commander` with `snapshot --env --project-key [--dotenv]` calling SDK. Add bin entry in `packages/sdk-drift/package.json`. Files: 2.
+7. **CLI snapshot command.** Create `packages/sdk-drift/bin/runic-drift.ts` wiring `commander` with `snapshot --env --project-key [--dotenv]` calling SDK. Add bin entry in `packages/sdk-drift/package.json`. Files: 2.
 
 ### D-2
 

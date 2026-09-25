@@ -247,7 +247,7 @@ function CellDrawer({
           <div>
             <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">Drift history</p>
             {loading ? (
-              <div className="h-20 rounded-lg bg-gray-100 animate-pulse" />
+              <div className="h-20 rounded-lg bg-gray-100 animate-runic" />
             ) : history && history.length > 0 ? (
               <ul className="space-y-2">
                 {history.map((ev) => (

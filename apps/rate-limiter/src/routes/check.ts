@@ -12,7 +12,7 @@ import { incrementCounter } from '../lib/counter'
 import { rateLimitEventQueue } from '../lib/queue'
 import { resolveProject } from '../middleware/auth'
 import { ruleCacheTtl, checkTimeoutMs } from '../env'
-import type { RateLimitRuleRecord, CheckResponse } from '@pulse/types'
+import type { RateLimitRuleRecord, CheckResponse } from '@runic/types'
 
 const checkBodySchema = z.object({
   projectId: z.string().min(1),

@@ -30,7 +30,7 @@ const mockPrisma = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@pulse/db', () => ({
+vi.mock('@runic/db', () => ({
   prisma: mockPrisma,
   Prisma: {},
 }))

@@ -6,7 +6,7 @@ export default function RunStatusBadge({ status }: RunStatusBadgeProps) {
   if (status === 'running') {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-        <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+        <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-runic" />
         Running
       </span>
     )

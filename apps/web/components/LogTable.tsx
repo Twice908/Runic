@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { apiFetch } from '@/lib/api'
 import { relativeTime, formatResponseTime, statusCategory } from '@/lib/utils'
-import type { RequestLogRow, LogsResponse } from '@pulse/types'
+import type { RequestLogRow, LogsResponse } from '@runic/types'
 
 interface LogTableProps {
   projectId: string

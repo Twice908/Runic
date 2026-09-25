@@ -95,37 +95,37 @@ export default function DriftSettingsPage({
     }
   }
 
-  const installCmd = `npm install -g @pulse/drift-agent`
+  const installCmd = `npm install -g @runic/drift-agent`
 
-  const snapshotGhAction = `- name: Pulse Drift Snapshot
+  const snapshotGhAction = `- name: Runic Drift Snapshot
   env:
-    PULSE_API_KEY: \${{ secrets.PULSE_API_KEY }}
+    RUNIC_API_KEY: \${{ secrets.RUNIC_API_KEY }}
   run: |
-    npx @pulse/drift-agent snapshot \\
+    npx @runic/drift-agent snapshot \\
       --env \${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }} \\
-      --project-key $PULSE_API_KEY`
+      --project-key $RUNIC_API_KEY`
 
-  const snapshotCli = `pulse-drift snapshot --env production --project-key ${projectKeyDisplay}`
+  const snapshotCli = `runic-drift snapshot --env production --project-key ${projectKeyDisplay}`
 
-  const ciCheckGhAction = `- name: Pulse Drift Check
+  const ciCheckGhAction = `- name: Runic Drift Check
   env:
-    PULSE_API_KEY: \${{ secrets.PULSE_API_KEY }}
+    RUNIC_API_KEY: \${{ secrets.RUNIC_API_KEY }}
   run: |
-    npx @pulse/drift-agent ci-check \\
+    npx @runic/drift-agent ci-check \\
       --env staging \\
-      --project-key $PULSE_API_KEY \\
+      --project-key $RUNIC_API_KEY \\
       --fail-on-drift \\
       --ignore-keys DATABASE_URL,NODE_ENV`
 
-  const ciCheckCli = `pulse-drift ci-check --env staging \\
+  const ciCheckCli = `runic-drift ci-check --env staging \\
   --project-key ${projectKeyDisplay} \\
   --fail-on-drift \\
   --ignore-keys DATABASE_URL,NODE_ENV`
 
-  const programmatic = `import { driftSnapshot } from '@pulse/drift-agent'
+  const programmatic = `import { driftSnapshot } from '@runic/drift-agent'
 
 driftSnapshot({
-  projectKey: process.env.PULSE_API_KEY,
+  projectKey: process.env.RUNIC_API_KEY,
   environment: process.env.NODE_ENV,
 })`
 
@@ -144,7 +144,7 @@ driftSnapshot({
         <div>
           <h2 className="text-base font-semibold text-gray-900">1. Quick Start</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            Install the Pulse drift agent globally.
+            Install the Runic drift agent globally.
           </p>
         </div>
         <CodeBlock

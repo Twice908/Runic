@@ -34,7 +34,7 @@ interface RateLimitHitRateChartProps {
 
 export default function RateLimitHitRateChart({ data, range, isLoading }: RateLimitHitRateChartProps) {
   if (isLoading) {
-    return <div className="h-[300px] animate-pulse rounded-xl bg-gray-100" />
+    return <div className="h-[300px] animate-runic rounded-xl bg-gray-100" />
   }
 
   // Aggregate across all rules into time-bucketed totals

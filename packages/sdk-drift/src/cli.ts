@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import fetch from 'node-fetch'
 import { driftSnapshot } from './snapshot'
 
-const DEFAULT_API_URL = 'https://drift.pulseobserve.com'
+const DEFAULT_API_URL = 'https://drift.runicobserve.com'
 
 interface SnapshotOpts {
   env: string
@@ -57,26 +57,26 @@ function readDotenvKeys(path: string): Record<string, string | undefined> {
 const program = new Command()
 
 program
-  .name('pulse-drift')
-  .description('Pulse Drift agent CLI — env/secret drift detection')
+  .name('runic-drift')
+  .description('Runic Drift agent CLI — env/secret drift detection')
   .version('0.0.1')
 
 program
   .command('snapshot')
   .description('Capture current env key names and send to the drift collector')
   .requiredOption('--env <name>', 'environment name (e.g. production, staging)')
-  .option('--project-key <key>', 'Pulse project API key (or set PULSE_API_KEY)')
+  .option('--project-key <key>', 'Runic project API key (or set RUNIC_API_KEY)')
   .option('--dotenv <path>', 'read keys from a .env file instead of process.env')
   .option('--api-url <url>', `drift collector URL (default ${DEFAULT_API_URL})`)
   .option('--json', 'emit a JSON result line instead of human text')
   .action(async (opts: SnapshotOpts) => {
-    const projectKey = opts.projectKey ?? process.env.PULSE_API_KEY
+    const projectKey = opts.projectKey ?? process.env.RUNIC_API_KEY
     if (!projectKey) {
-      const msg = 'project key is required: pass --project-key or set PULSE_API_KEY'
+      const msg = 'project key is required: pass --project-key or set RUNIC_API_KEY'
       if (opts.json) {
         process.stdout.write(JSON.stringify({ ok: false, error: msg }) + '\n')
       } else {
-        process.stderr.write(`[pulse-drift] ${msg}\n`)
+        process.stderr.write(`[runic-drift] ${msg}\n`)
       }
       process.exit(0)
     }
@@ -109,19 +109,19 @@ program
   .command('ci-check')
   .description('Compare an environment against baseline — CI-friendly, fail-open')
   .requiredOption('--env <name>', 'environment name to check')
-  .option('--project-key <key>', 'Pulse project API key (or set PULSE_API_KEY)')
+  .option('--project-key <key>', 'Runic project API key (or set RUNIC_API_KEY)')
   .option('--api-url <url>', `drift collector URL (default ${DEFAULT_API_URL})`)
   .option('--fail-on-drift', 'exit 1 if drift is detected', false)
   .option('--ignore-keys <keys>', 'comma-separated key names to ignore')
   .option('--json', 'emit a JSON result line instead of human text')
   .action(async (opts: CiCheckOpts) => {
-    const projectKey = opts.projectKey ?? process.env.PULSE_API_KEY
+    const projectKey = opts.projectKey ?? process.env.RUNIC_API_KEY
     if (!projectKey) {
-      const msg = 'project key is required: pass --project-key or set PULSE_API_KEY'
+      const msg = 'project key is required: pass --project-key or set RUNIC_API_KEY'
       if (opts.json) {
         process.stdout.write(JSON.stringify({ ok: false, error: msg }) + '\n')
       } else {
-        process.stderr.write(`[pulse-drift] ${msg}\n`)
+        process.stderr.write(`[runic-drift] ${msg}\n`)
       }
       process.exit(0)
     }
@@ -151,7 +151,7 @@ program
         process.stdout.write(JSON.stringify({ ok: false, error: msg }) + '\n')
       } else {
         process.stderr.write(
-          `[pulse-drift] warning — drift check unreachable: ${msg}\n`,
+          `[runic-drift] warning — drift check unreachable: ${msg}\n`,
         )
       }
       process.exit(0)

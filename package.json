@@ -1,5 +1,5 @@
 {
-  "name": "pulse",
+  "name": "runic",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -18,5 +18,12 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.5"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Twice908/runic.git"
+  },
+  "keywords": [
+    "runic"
+  ]
 }

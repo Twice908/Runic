@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
 import { formatResponseTime } from '@/lib/utils'
-import type { ProjectStats } from '@pulse/types'
+import type { ProjectStats } from '@runic/types'
 
 interface StatsCardsProps {
   projectId: string
@@ -12,9 +12,9 @@ interface StatsCardsProps {
 function SkeletonCard() {
   return (
     <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-      <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
-      <div className="mt-4 h-8 w-20 animate-pulse rounded bg-gray-200" />
-      <div className="mt-2 h-3 w-32 animate-pulse rounded bg-gray-200" />
+      <div className="h-3 w-24 animate-runic rounded bg-gray-200" />
+      <div className="mt-4 h-8 w-20 animate-runic rounded bg-gray-200" />
+      <div className="mt-2 h-3 w-32 animate-runic rounded bg-gray-200" />
     </div>
   )
 }

@@ -6,7 +6,7 @@ import StatsCards from '@/components/StatsCards'
 import LogTable from '@/components/LogTable'
 import CreateProjectModal from '@/components/CreateProjectModal'
 import { apiFetch } from '@/lib/api'
-import type { ProjectSummary } from '@pulse/types'
+import type { ProjectSummary } from '@runic/types'
 
 export default function DashboardPage() {
   const searchParams = useSearchParams()
@@ -26,10 +26,10 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <div className="h-6 w-48 animate-pulse rounded bg-gray-200" />
+        <div className="h-6 w-48 animate-runic rounded bg-gray-200" />
         <div className="mt-6 grid grid-cols-4 gap-6">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl bg-gray-100" />
+            <div key={i} className="h-28 animate-runic rounded-xl bg-gray-100" />
           ))}
         </div>
       </div>

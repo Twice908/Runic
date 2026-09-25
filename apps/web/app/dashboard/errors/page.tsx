@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelector'
 import { useErrorList } from '@/hooks/useAnalytics'
-import type { ErrorGroup } from '@pulse/types'
+import type { ErrorGroup } from '@runic/types'
 
 function statusBadgeColor(code: number): string {
   if (code >= 500) return 'bg-red-100 text-red-700'
@@ -192,7 +192,7 @@ export default function ErrorsPage() {
       {isLoading && (
         <div className="space-y-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-gray-100" />
+            <div key={i} className="h-20 animate-runic rounded-xl bg-gray-100" />
           ))}
         </div>
       )}

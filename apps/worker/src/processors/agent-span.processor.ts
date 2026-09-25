@@ -1,7 +1,7 @@
 import { Worker } from 'bullmq'
 import type { ConnectionOptions, Job } from 'bullmq'
 import pino from 'pino'
-import { prisma, Prisma } from '@pulse/db'
+import { prisma, Prisma } from '@runic/db'
 
 const logger = pino({ name: 'agent-span-processor' })
 

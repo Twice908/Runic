@@ -1,25 +1,27 @@
+name: runic
+
 services:
   timescaledb:
     image: timescale/timescaledb:latest-pg15
-    container_name: pulse-timescaledb
+    container_name: runic-timescaledb
     restart: unless-stopped
     environment:
-      POSTGRES_USER: pulse
-      POSTGRES_PASSWORD: pulse
-      POSTGRES_DB: pulse
+      POSTGRES_USER: runic
+      POSTGRES_PASSWORD: runic
+      POSTGRES_DB: runic
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pulse -d pulse"]
+      test: ["CMD-SHELL", "pg_isready -U runic -d runic"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: pulse-redis
+    container_name: runic-redis
     restart: unless-stopped
     ports:
       - "6379:6379"

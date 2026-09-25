@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAlerts, useAlertHistory } from '@/hooks/useAlerts'
-import type { AlertRule, AlertType, AlertChannel } from '@pulse/types'
+import type { AlertRule, AlertType, AlertChannel } from '@runic/types'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -570,7 +570,7 @@ export default function AlertsPage() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />
+              <div key={i} className="h-20 rounded-xl bg-gray-100 animate-runic" />
             ))}
           </div>
         ) : alerts.length === 0 ? (
@@ -600,7 +600,7 @@ export default function AlertsPage() {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Alert History</h2>
 
         {historyLoading ? (
-          <div className="h-40 rounded-xl bg-gray-100 animate-pulse" />
+          <div className="h-40 rounded-xl bg-gray-100 animate-runic" />
         ) : history.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-10 text-center">
             <p className="text-sm text-gray-500 dark:text-slate-400">No alerts have fired yet</p>

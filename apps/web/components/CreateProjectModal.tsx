@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiFetch } from '@/lib/api'
-import type { ApiResponse, CreateProjectResponse } from '@pulse/types'
+import type { ApiResponse, CreateProjectResponse } from '@runic/types'
 
 interface CreateProjectModalProps {
   onClose: () => void

@@ -10,7 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
-import type { VolumeBucket } from '@pulse/types'
+import type { VolumeBucket } from '@runic/types'
 import ChartTooltip from './ChartTooltip'
 
 function formatLabel(bucket: string, range: string): string {
@@ -28,7 +28,7 @@ interface VolumeChartProps {
 
 export default function VolumeChart({ data, range, isLoading }: VolumeChartProps) {
   if (isLoading) {
-    return <div className="h-[300px] animate-pulse rounded-xl bg-gray-100" />
+    return <div className="h-[300px] animate-runic rounded-xl bg-gray-100" />
   }
 
   const rangeStartMs = range === '7d'

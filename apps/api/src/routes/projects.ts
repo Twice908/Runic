@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { generateApiKey, hashApiKey, getApiKeyPrefix } from '../lib/api-key'
 import { verifyClerkJwt } from '../lib/auth'
 

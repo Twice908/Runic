@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { apiFetch } from '@/lib/api'
 import RegenerateKeyModal from '@/components/RegenerateKeyModal'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import type { ProjectSummary } from '@pulse/types'
+import type { ProjectSummary } from '@runic/types'
 
 export default function SettingsPage() {
   const searchParams = useSearchParams()
@@ -121,7 +121,7 @@ export default function SettingsPage() {
       <div className="max-w-2xl mx-auto p-8 space-y-6">
         {AppearanceSection}
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-32 animate-pulse rounded-xl bg-gray-100" />
+          <div key={i} className="h-32 animate-runic rounded-xl bg-gray-100" />
         ))}
       </div>
     )
@@ -173,7 +173,7 @@ export default function SettingsPage() {
       <section className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm space-y-4">
         <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">API Key</h2>
         <p className="text-sm text-gray-500 dark:text-slate-400">
-          Use this key in the Pulse SDK to send data from your backend.
+          Use this key in the Runic SDK to send data from your backend.
         </p>
         <div className="flex items-center gap-3">
           <code className="flex-1 rounded-lg border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 px-3 py-2 font-mono text-sm text-gray-700 dark:text-slate-100 select-none">

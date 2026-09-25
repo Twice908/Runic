@@ -1,7 +1,7 @@
 import type { Job } from 'bullmq'
 import pino from 'pino'
-import { prisma } from '@pulse/db'
-import type { IngestEvent } from '@pulse/types'
+import { prisma } from '@runic/db'
+import type { IngestEvent } from '@runic/types'
 
 const logger = pino({ name: 'ingest-processor' })
 

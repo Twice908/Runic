@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { requireProjectOwnership } from '@/lib/guards/project-ownership'
 
 export async function GET(

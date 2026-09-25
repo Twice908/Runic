@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import IORedisMock from 'ioredis-mock'
 import type { Redis } from 'ioredis'
 import { getRulesForProject, invalidateRulesCache, RULES_CACHE_KEY } from './rule-cache'
-import type { RateLimitRuleRecord } from '@pulse/types'
+import type { RateLimitRuleRecord } from '@runic/types'
 
 function makeMockRedis(): Redis {
   return new IORedisMock() as unknown as Redis

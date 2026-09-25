@@ -1,4 +1,4 @@
-# CLAUDE.codebase.md — Pulse Permanent Codebase Map
+# CLAUDE.codebase.md — Runic Permanent Codebase Map
 
 > **Purpose**: Let Claude Code understand the entire project structure, every feature, every file's responsibility, and every known issue without reading individual source files first.
 > **Rule**: Never modify source files based on this document. This is a read-only map.
@@ -14,7 +14,7 @@
 | `apps/worker` | BullMQ background worker — ingest processor, uptime pinger, alert evaluator | No HTTP port |
 | `apps/web` | Next.js 14 dashboard — renders all Observe + Rate Limiter UI, proxies API calls | `3000` (Next.js default) |
 | `packages/db` | Prisma schema (`schema.prisma`) + singleton `PrismaClient` export | N/A |
-| `packages/sdk` | npm package — `pulse()` Express middleware, `pulsePlugin()` Fastify plugin, `rateLimit()` Express middleware, `rateLimitPlugin()` Fastify plugin | N/A |
+| `packages/sdk` | npm package — `runic()` Express middleware, `runicPlugin()` Fastify plugin, `rateLimit()` Express middleware, `rateLimitPlugin()` Fastify plugin | N/A |
 | `packages/types` | Shared TypeScript types used across all apps | N/A |
 
 **Build order**: `packages/types` → `packages/db` → `packages/sdk` → `apps/*`
@@ -46,7 +46,7 @@
 | `userId` | String | FK → User |
 
 **Relations**: `User`, `RequestLog[]`, `ErrorEvent[]`, `UptimeCheck[]`, `Alert[]`, `AlertEvent[]`, `RateLimitRule[]`, `RateLimitEvent[]`
-**Owned by**: Pulse Observe + Rate Limiter (shared)
+**Owned by**: Runic Observe + Rate Limiter (shared)
 
 ---
 
@@ -62,7 +62,7 @@
 | `responseTime` | Int | Milliseconds |
 
 **PK**: `[id, timestamp]` — composite PK required because TimescaleDB needs the partition column in every unique index.
-**Feature**: Pulse Observe — ingestion
+**Feature**: Runic Observe — ingestion
 
 ---
 
@@ -82,7 +82,7 @@
 | `resolvedAt` | DateTime? | |
 
 **Unique**: `[projectId, route, statusCode]` — errors are grouped, not stored per-request
-**Feature**: Pulse Observe — error tracking
+**Feature**: Runic Observe — error tracking
 
 ---
 
@@ -96,7 +96,7 @@
 | `responseTime` | Int? | Milliseconds, null on timeout/error |
 | `checkedAt` | DateTime | |
 
-**Feature**: Pulse Observe — uptime monitoring
+**Feature**: Runic Observe — uptime monitoring
 
 ---
 
@@ -154,7 +154,7 @@
 | `updatedAt` | DateTime | `@updatedAt` |
 
 **Index**: `[projectId, enabled]`
-**Feature**: Pulse Rate Limiter — rule definition
+**Feature**: Runic Rate Limiter — rule definition
 
 ---
 
@@ -171,13 +171,13 @@
 
 **PK**: `[id, timestamp]`
 **Indexes**: `[projectId, timestamp]`, `[ruleId, timestamp]`
-**Feature**: Pulse Rate Limiter — event log
+**Feature**: Runic Rate Limiter — event log
 
 ---
 
 ## 3. Feature Map
 
-### Pulse Observe
+### Runic Observe
 
 #### Request Ingestion
 - **API route**: `POST /ingest` — `apps/api/src/routes/ingest.ts`
@@ -225,7 +225,7 @@
 
 ---
 
-### Pulse Rate Limiter
+### Runic Rate Limiter
 
 #### Hot-Path Check
 - **Rate-limiter route**: `POST /v1/check` — `apps/rate-limiter/src/routes/check.ts` (`checkRoutes`)
@@ -317,7 +317,7 @@
 | File | `apps/worker/src/processors/uptime.processor.ts` |
 | Queue name | `uptime` (repeatable, every 60,000 ms) |
 | Concurrency | 1 |
-| What it does | Finds all active `Alert` rows with `type=uptime` and non-null `url`; pings each URL with a 10s timeout (GET with `X-Pulse-Skip-Log: true` header); writes one `UptimeCheck` row per URL |
+| What it does | Finds all active `Alert` rows with `type=uptime` and non-null `url`; pings each URL with a 10s timeout (GET with `X-Runic-Skip-Log: true` header); writes one `UptimeCheck` row per URL |
 | After processing | Calls `evaluateUptimeAlerts(projectId)` for each pinged URL |
 
 ### Observe-Alerts Worker
@@ -356,18 +356,18 @@
 
 ## 7. SDK Middleware
 
-### `pulse()` (Express) / `pulsePlugin()` (Fastify)
+### `runic()` (Express) / `runicPlugin()` (Fastify)
 
 **Step by step**:
-1. Creates a `PulseClient` instance (`packages/sdk/src/core/client.ts`) with `apiKey`, `host` (default: `https://api.pulse.dev`), `timeout` (default 5000ms), `debug`
+1. Creates a `RunicClient` instance (`packages/sdk/src/core/client.ts`) with `apiKey`, `host` (default: `https://api.runic.dev`), `timeout` (default 5000ms), `debug`
 2. Calls `setClient(client)` so `captureError()` can reference it
 3. Creates a `BatchBuffer` (`packages/sdk/src/core/buffer.ts`) with `onFlush` wired to `client.send(events)`
 4. Calls `buffer.start()` (auto-flush on interval / size threshold)
 5. Registers `SIGTERM` / `SIGINT` handlers to drain the buffer gracefully
 6. **Express**: patches `res.end()` to measure `responseTime = Date.now() - startTime` and capture `method`, `route` (prefers `req.route.path` over raw `req.path`), `statusCode`, `timestamp`
-7. **Fastify**: hooks `onRequest` (records start time on `request.pulseStartTime`) and `onResponse` (captures metrics)
-8. Skips any request with header `X-Pulse-Skip-Log: true`, any method in `ignoreMethods`, or any path starting with a prefix in `ignoreRoutes`
-9. Adds `IngestEvent` to buffer; `PulseClient.send()` POSTs `{ events: IngestEvent[] }` to `{host}/ingest` with `Authorization: Bearer {apiKey}`
+7. **Fastify**: hooks `onRequest` (records start time on `request.runicStartTime`) and `onResponse` (captures metrics)
+8. Skips any request with header `X-Runic-Skip-Log: true`, any method in `ignoreMethods`, or any path starting with a prefix in `ignoreRoutes`
+9. Adds `IngestEvent` to buffer; `RunicClient.send()` POSTs `{ events: IngestEvent[] }` to `{host}/ingest` with `Authorization: Bearer {apiKey}`
 10. All send errors are silently swallowed — never throws, never rejects
 
 **Fail-open behaviour**: Any error in middleware is caught; `next()` is always called regardless
@@ -378,7 +378,7 @@
 
 **Step by step**:
 1. Creates a `RateLimiter` instance (`packages/sdk/src/rate-limit.ts`)
-2. If `options.rules === 'auto'`: fetches enabled rules from `${RATE_LIMITER_URL}/v1/rules/${PULSE_PROJECT_ID}` with `Authorization: Bearer ${RATE_LIMITER_INTERNAL_TOKEN}`; refreshes every 30s; stale rules are retained on fetch failure
+2. If `options.rules === 'auto'`: fetches enabled rules from `${RATE_LIMITER_URL}/v1/rules/${RUNIC_PROJECT_ID}` with `Authorization: Bearer ${RATE_LIMITER_INTERNAL_TOKEN}`; refreshes every 30s; stale rules are retained on fetch failure
 3. If `options.rules` is an array: uses those rules as the cached rule set (no network fetch)
 4. Registers `SIGTERM` / `SIGINT` cleanup (calls `limiter.destroy()` to clear refresh interval)
 5. **Per request**:
@@ -474,9 +474,9 @@ Schema (`packages/db/prisma/schema.prisma`) has `resolved Boolean @default(false
 
 **Status**: FIXED
 
-**Root cause**: The Pulse Observe middleware (`packages/sdk/src/middleware/express.ts` line 37) honours `X-Pulse-Skip-Log: true` and short-circuits via `next()` so the uptime worker's 60-second pings never get ingested. The Rate Limiter middleware (`packages/sdk/src/middleware/rate-limit-express.ts`) had no equivalent check, so every uptime ping that traversed a developer's rate-limited path called `/v1/check`, incremented the counter, and enqueued a `RateLimitEvent` — producing entries on a 60-second cadence with zero real user traffic.
+**Root cause**: The Runic Observe middleware (`packages/sdk/src/middleware/express.ts` line 37) honours `X-Runic-Skip-Log: true` and short-circuits via `next()` so the uptime worker's 60-second pings never get ingested. The Rate Limiter middleware (`packages/sdk/src/middleware/rate-limit-express.ts`) had no equivalent check, so every uptime ping that traversed a developer's rate-limited path called `/v1/check`, incremented the counter, and enqueued a `RateLimitEvent` — producing entries on a 60-second cadence with zero real user traffic.
 
-**Fix**: Added the same `if (req.headers['x-pulse-skip-log'] === 'true') { next(); return }` early return at the top of the Express rate-limit middleware, mirroring the Observe middleware. The uptime processor (`apps/worker/src/processors/uptime.processor.ts` line 45) was confirmed to send the header and was not modified.
+**Fix**: Added the same `if (req.headers['x-runic-skip-log'] === 'true') { next(); return }` early return at the top of the Express rate-limit middleware, mirroring the Observe middleware. The uptime processor (`apps/worker/src/processors/uptime.processor.ts` line 45) was confirmed to send the header and was not modified.
 
 **File changed**: `packages/sdk/src/middleware/rate-limit-express.ts`
 
@@ -495,7 +495,7 @@ Schema (`packages/db/prisma/schema.prisma`) has `resolved Boolean @default(false
 | `CLERK_SECRET_KEY` | Yes | — | Clerk backend SDK authentication key |
 | `CLERK_WEBHOOK_SECRET` | Yes | — | Svix signature verification for Clerk webhooks |
 | `RESEND_API_KEY` | No | — | Resend email API key; omitting disables email alert delivery |
-| `RESEND_FROM_EMAIL` | No | `alerts@pulse.dev` | Sender address for alert emails |
+| `RESEND_FROM_EMAIL` | No | `alerts@runic.dev` | Sender address for alert emails |
 | `NODE_ENV` | No | `development` | |
 
 ### `apps/rate-limiter` (port 3002)
@@ -518,16 +518,16 @@ Schema (`packages/db/prisma/schema.prisma`) has `resolved Boolean @default(false
 | `DATABASE_URL` | Yes | — | PostgreSQL connection URL |
 | `REDIS_URL` | Yes | — | Redis connection URL (also used for BullMQ) |
 | `RESEND_API_KEY` | No | — | Resend email API key for alert notifications |
-| `RESEND_FROM_EMAIL` | No | `alerts@pulse.dev` | Sender address |
+| `RESEND_FROM_EMAIL` | No | `alerts@runic.dev` | Sender address |
 | `NODE_ENV` | No | `development` | |
 
 ### `packages/sdk` (used in customer's application)
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `PULSE_API_KEY` | Yes (for `pulse()`) | — | Project API key; passed to `pulse({ apiKey })` or set as env var |
-| `PULSE_HOST` | No | `https://api.pulse.dev` | URL of the `apps/api` server |
-| `PULSE_PROJECT_ID` | Yes (for `rateLimit()`) | — | Project ID for `/v1/check` calls |
+| `RUNIC_API_KEY` | Yes (for `runic()`) | — | Project API key; passed to `runic({ apiKey })` or set as env var |
+| `RUNIC_HOST` | No | `https://api.runic.dev` | URL of the `apps/api` server |
+| `RUNIC_PROJECT_ID` | Yes (for `rateLimit()`) | — | Project ID for `/v1/check` calls |
 | `RATE_LIMITER_URL` | Yes (for `rateLimit()`) | — | URL of the `apps/rate-limiter` service |
 | `RATE_LIMITER_INTERNAL_TOKEN` | Yes (for `rules: 'auto'`) | — | Bearer token for fetching rules from rate-limiter service |
 

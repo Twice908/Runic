@@ -1,5 +1,5 @@
 import pino from 'pino'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { evaluateUptimeAlerts } from '../lib/alert-evaluator'
 
 const logger = pino({ name: 'uptime-processor' })
@@ -42,7 +42,7 @@ async function pingAndRecord(projectId: string, url: string): Promise<void> {
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
     try {
-      const res = await fetch(url, { method: 'GET', signal: controller.signal, headers: { 'X-Pulse-Skip-Log': 'true' } })
+      const res = await fetch(url, { method: 'GET', signal: controller.signal, headers: { 'X-Runic-Skip-Log': 'true' } })
       clearTimeout(timer)
       responseTime = Date.now() - start
       httpStatusCode = res.status

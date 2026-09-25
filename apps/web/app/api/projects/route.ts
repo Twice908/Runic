@@ -1,9 +1,9 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { proxyToApi } from '@/lib/api-proxy'
-import type { ProjectSummary, ApiResponse, CreateProjectResponse } from '@pulse/types'
+import type { ProjectSummary, ApiResponse, CreateProjectResponse } from '@runic/types'
 
 export async function GET(): Promise<NextResponse> {
   const { userId } = auth()

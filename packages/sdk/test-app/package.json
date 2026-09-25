@@ -1,14 +1,21 @@
 {
-  "name": "pulse-sdk-test-app",
+  "name": "runic-sdk-test-app",
   "version": "1.0.0",
   "private": true,
-  "description": "Local test harness for @pulse/node SDK development",
+  "description": "Local test harness for @runic/node SDK development",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@pulse/node": "file:../",
+    "@runic/node": "file:../",
     "express": "^4.18.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Twice908/runic.git"
+  },
+  "keywords": [
+    "runic"
+  ]
 }

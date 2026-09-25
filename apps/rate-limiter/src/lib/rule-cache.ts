@@ -1,6 +1,6 @@
 import type { Redis } from 'ioredis'
 import type { PrismaClient } from '@prisma/client'
-import type { RateLimitRuleRecord } from '@pulse/types'
+import type { RateLimitRuleRecord } from '@runic/types'
 
 export const RULES_CACHE_KEY = (projectId: string): string => `rl:rules:${projectId}`
 

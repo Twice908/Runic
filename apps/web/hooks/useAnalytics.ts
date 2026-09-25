@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { VolumeBucket, LatencyBucket, TopRoute, ErrorGroup } from '@pulse/types'
+import type { VolumeBucket, LatencyBucket, TopRoute, ErrorGroup } from '@runic/types'
 
 const REFRESH_INTERVAL_MS = 60_000
 

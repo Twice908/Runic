@@ -10,7 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
-import type { LatencyBucket } from '@pulse/types'
+import type { LatencyBucket } from '@runic/types'
 import ChartTooltip from './ChartTooltip'
 
 function formatLabel(bucket: string, range: string): string {
@@ -27,7 +27,7 @@ interface LatencyChartProps {
 
 export default function LatencyChart({ data, range, isLoading }: LatencyChartProps) {
   if (isLoading) {
-    return <div className="h-[300px] animate-pulse rounded-xl bg-gray-100" />
+    return <div className="h-[300px] animate-runic rounded-xl bg-gray-100" />
   }
 
   const rangeStartMs = range === '7d'

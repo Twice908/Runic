@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import { Cpu } from 'lucide-react'
-import type { ProjectSummary } from '@pulse/types'
+import type { ProjectSummary } from '@runic/types'
 
 interface SidebarProps {
   projects: ProjectSummary[]
@@ -58,7 +58,7 @@ export default function Sidebar({ projects }: SidebarProps) {
     >
       {/* Logo */}
       <div className="flex h-16 items-center px-6 border-b border-white/10">
-        <span className="text-lg font-bold text-white tracking-tight">Pulse</span>
+        <span className="text-lg font-bold text-white tracking-tight">Runic</span>
         <span className="ml-2 rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-medium text-white">
           beta
         </span>

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { PulseAgent } from '../agent'
+import { RunicAgent } from '../agent'
 
 type MockFetch = ReturnType<typeof vi.fn>
 
-describe('PulseAgent SDK', () => {
+describe('RunicAgent SDK', () => {
   let fetchMock: MockFetch
 
   beforeEach(() => {
@@ -15,11 +15,11 @@ describe('PulseAgent SDK', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
-    delete process.env['PULSE_DISABLED']
+    delete process.env['RUNIC_DISABLED']
   })
 
   it('startRun sends correct run_start payload', async () => {
-    const agent = new PulseAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
+    const agent = new RunicAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
     await agent.startRun('Summarize report', { metadata: { triggeredBy: 'cron' } })
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -41,7 +41,7 @@ describe('PulseAgent SDK', () => {
   })
 
   it('span.end buffers payload — does NOT call fetch', async () => {
-    const agent = new PulseAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
+    const agent = new RunicAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
     const run = await agent.startRun('Test task')
 
     fetchMock.mockClear()
@@ -53,7 +53,7 @@ describe('PulseAgent SDK', () => {
   })
 
   it('run.complete flushes all spans + run_end in one fetch call', async () => {
-    const agent = new PulseAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
+    const agent = new RunicAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
     const run = await agent.startRun('Test task')
 
     fetchMock.mockClear()
@@ -80,7 +80,7 @@ describe('PulseAgent SDK', () => {
   })
 
   it('inputPreview and outputPreview are truncated at 500 chars', async () => {
-    const agent = new PulseAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
+    const agent = new RunicAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
     const run = await agent.startRun('Test task')
 
     fetchMock.mockClear()
@@ -103,9 +103,9 @@ describe('PulseAgent SDK', () => {
   })
 
   it('no-op mode: zero fetch calls across the full run lifecycle', async () => {
-    process.env['PULSE_DISABLED'] = 'true'
+    process.env['RUNIC_DISABLED'] = 'true'
 
-    const agent = new PulseAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
+    const agent = new RunicAgent({ apiKey: 'test-key', host: 'http://localhost:3000' })
     const run = await agent.startRun('Test task')
     const span = run.startSpan('llm_call', { name: 'step-1', inputPreview: 'Hello' })
     span.end({ outputPreview: 'World' })

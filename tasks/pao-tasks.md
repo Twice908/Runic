@@ -1,6 +1,6 @@
 # Tasks.md — PAO Phase A: Span Ingestion + Basic Run List
 
-Phase A goal: A developer can install `@pulse/agent`, wrap their agent run, and see a list of runs with span details in the Pulse dashboard.
+Phase A goal: A developer can install `@runic/agent`, wrap their agent run, and see a list of runs with span details in the Runic dashboard.
 
 **Scope**: Schema → Ingestion route → Worker → API routes → Dashboard UI → SDK
 
@@ -9,7 +9,7 @@ Phase A goal: A developer can install `@pulse/agent`, wrap their agent run, and 
 ## 1. Database & Schema
 
 - [ ] **1.1 Add PAO models to Prisma schema**
-  Add `AgentDefinition`, `AgentRun`, and `AgentSpan` models to `prisma/schema.prisma` exactly as specified in `claude.pulse_agent_observe.md`. Add relations back from `Project`. Do not modify any existing model.
+  Add `AgentDefinition`, `AgentRun`, and `AgentSpan` models to `prisma/schema.prisma` exactly as specified in `claude.runic_agent_observe.md`. Add relations back from `Project`. Do not modify any existing model.
 
 - [ ] **1.2 Generate and run Prisma migration**
   Run `prisma migrate dev --name add_pao_models`. Verify migration file is clean and all foreign keys resolve correctly.
@@ -122,12 +122,12 @@ Phase A goal: A developer can install `@pulse/agent`, wrap their agent run, and 
 
 ## 6. SDK Package
 
-- [x] **6.1 Scaffold @pulse/agent package**
-  Create `packages/pulse-agent/` with `package.json` (name: `@pulse/agent`, main: `dist/index.js`, types: `dist/index.d.ts`), `tsconfig.json` (extends root), and `src/index.ts`. Add to the monorepo workspace.
+- [x] **6.1 Scaffold @runic/agent package**
+  Create `packages/runic-agent/` with `package.json` (name: `@runic/agent`, main: `dist/index.js`, types: `dist/index.d.ts`), `tsconfig.json` (extends root), and `src/index.ts`. Add to the monorepo workspace.
 
-- [x] **6.2 Implement PulseAgent class**
-  In `src/agent.ts`, implement `PulseAgent` with:
-  - Constructor: accepts `{ apiKey: string, host?: string }` (default host: `https://api.usepulse.dev`)
+- [x] **6.2 Implement RunicAgent class**
+  In `src/agent.ts`, implement `RunicAgent` with:
+  - Constructor: accepts `{ apiKey: string, host?: string }` (default host: `https://api.userunic.dev`)
   - `startRun(task: string, opts?): Promise<AgentRun>` — sends `run_start` payload, returns run handle
   - Internal: `_flush(payloads)` — fire-and-forget POST to `/ingest/agent-span`, silent on error
 
@@ -145,13 +145,13 @@ Phase A goal: A developer can install `@pulse/agent`, wrap their agent run, and 
   - Does NOT send to API directly — run handles all flushing
 
 - [x] **6.5 Add no-op mode**
-  At the top of `PulseAgent` constructor: if `process.env.PULSE_DISABLED === 'true'`, replace all methods with no-ops that return immediately. Prevents any SDK activity in test environments.
+  At the top of `RunicAgent` constructor: if `process.env.RUNIC_DISABLED === 'true'`, replace all methods with no-ops that return immediately. Prevents any SDK activity in test environments.
 
 - [x] **6.6 Build and publish config**
-  Configure `tsup` (or `tsc`) to build to `dist/`. Add `build` and `prepublishOnly` scripts. Confirm the package can be imported in a plain Node.js script with `import { PulseAgent } from '@pulse/agent'`.
+  Configure `tsup` (or `tsc`) to build to `dist/`. Add `build` and `prepublishOnly` scripts. Confirm the package can be imported in a plain Node.js script with `import { RunicAgent } from '@runic/agent'`.
 
 - [x] **6.7 Write SDK unit tests**
-  Test `PulseAgent`, `AgentRun`, `AgentSpan` with mocked `fetch`:
+  Test `RunicAgent`, `AgentRun`, `AgentSpan` with mocked `fetch`:
   - `startRun` sends correct `run_start` payload
   - `span.end` adds payload to buffer (does not call fetch)
   - `run.complete` flushes all spans + sends `run_end`
@@ -165,9 +165,9 @@ Phase A goal: A developer can install `@pulse/agent`, wrap their agent run, and 
 - [ ] **7.1 Manual end-to-end smoke test**
   Write a standalone script at `scripts/test-pao-e2e.ts`:
   ```ts
-  import { PulseAgent } from '@pulse/agent'
-  const pulse = new PulseAgent({ apiKey: process.env.PULSE_TEST_KEY! })
-  const run = await pulse.startRun('E2E smoke test')
+  import { RunicAgent } from '@runic/agent'
+  const runic = new RunicAgent({ apiKey: process.env.RUNIC_TEST_KEY! })
+  const run = await runic.startRun('E2E smoke test')
   const span = run.startSpan('llm_call', { name: 'fake-gpt4', model: 'gpt-4o', inputPreview: 'Hello' })
   await new Promise(r => setTimeout(r, 100))
   span.end({ outputPreview: 'World', inputTokens: 10, outputTokens: 5, status: 'success' })
@@ -194,9 +194,9 @@ Use these when you're ready to implement a section. Paste the prompt into Claude
 model: claude-sonnet-4-5, effort: high
 
 ```
-Add the PAO (Pulse Agent Observe) data models to this Pulse codebase.
+Add the PAO (Runic Agent Observe) data models to this Runic codebase.
 
-1. Open `prisma/schema.prisma` and add three new models: `AgentDefinition`, `AgentRun`, and `AgentSpan`. Specs are in `claude.pulse_agent_observe.md` under "Data Models". Do not modify any existing model. Add the required `@relation` back-references from the `Project` model.
+1. Open `prisma/schema.prisma` and add three new models: `AgentDefinition`, `AgentRun`, and `AgentSpan`. Specs are in `claude.runic_agent_observe.md` under "Data Models". Do not modify any existing model. Add the required `@relation` back-references from the `Project` model.
 
 2. Run `prisma migrate dev --name add_pao_models` and confirm it succeeds.
 
@@ -204,7 +204,7 @@ Add the PAO (Pulse Agent Observe) data models to this Pulse codebase.
 
 4. Add a `seedAgentRun()` function to the existing seed script. It should create one `AgentRun` with 5 `AgentSpan` records (mix of `llm_call` and `tool_call`) for the existing dev project. Run the seed and verify the records appear.
 
-Use the conventions in `claude.pulse_agent_observe.md` under "Coding Conventions".
+Use the conventions in `claude.runic_agent_observe.md` under "Coding Conventions".
 ```
 
 ---
@@ -214,7 +214,7 @@ Use the conventions in `claude.pulse_agent_observe.md` under "Coding Conventions
 model: claude-sonnet-4-5, effort: high
 
 ```
-Implement the PAO span ingestion route for this Pulse codebase. Reference `claude.pulse_agent_observe.md` for all specs.
+Implement the PAO span ingestion route for this Runic codebase. Reference `claude.runic_agent_observe.md` for all specs.
 
 1. Create `apps/api/src/schemas/agent-span.schema.ts` with a Zod schema for `AgentSpanPayload`. Export the inferred TypeScript type. Cover all fields from the "Ingest payload shape" section.
 
@@ -241,7 +241,7 @@ Target: < 10ms response time. Do not write to the DB from this route.
 model: claude-sonnet-4-5, effort: high
 
 ```
-Implement the PAO agent-span BullMQ worker for this Pulse codebase. Reference `claude.pulse_agent_observe.md` under "Worker Handler" and "Coding Conventions".
+Implement the PAO agent-span BullMQ worker for this Runic codebase. Reference `claude.runic_agent_observe.md` under "Worker Handler" and "Coding Conventions".
 
 1. Create `apps/api/src/workers/agent-span.worker.ts`. Register a BullMQ `Worker` on the `'agent-spans'` queue. Export `startAgentSpanWorker()`.
 
@@ -264,7 +264,7 @@ All DB access via Prisma only. No raw SQL in the worker.
 model: claude-sonnet-4-5, effort: high
 
 ```
-Add the PAO API routes to the Next.js dashboard in this Pulse codebase. Reference `claude.pulse_agent_observe.md`.
+Add the PAO API routes to the Next.js dashboard in this Runic codebase. Reference `claude.runic_agent_observe.md`.
 
 1. Create `app/api/agents/runs/route.ts` (GET). Returns paginated `AgentRun` list for the current project. Query params: `page`, `limit` (default 20), optional `status` filter. Include span count via `_count`. Sort by `startedAt DESC`. Validate project ownership before returning data.
 
@@ -282,7 +282,7 @@ Use the existing session/auth pattern from other API routes in this codebase. Ne
 model: claude-sonnet-4-5, effort: high
 
 ```
-Build the PAO dashboard UI pages and components for this Pulse Next.js codebase. Reference `claude.pulse_agent_observe.md` under "Dashboard Pages". Match the visual style and component patterns already used in this dashboard.
+Build the PAO dashboard UI pages and components for this Runic Next.js codebase. Reference `claude.runic_agent_observe.md` under "Dashboard Pages". Match the visual style and component patterns already used in this dashboard.
 
 1. `/dashboard/agents/page.tsx` — run list page. Fetch from `/api/agents/runs`. Table with columns: Task, Status, Start time, Duration, Span count, Total tokens, Total cost. Empty state with integration CTA.
 
@@ -310,11 +310,11 @@ Use existing UI primitives (shadcn/ui, Tailwind). Do not introduce new component
 model: claude-sonnet-4-5, effort: high
 
 ```
-Build the `@pulse/agent` npm SDK package for this Pulse monorepo. Reference `claude.pulse_agent_observe.md` under "SDK Design" and "SDK implementation rules".
+Build the `@runic/agent` npm SDK package for this Runic monorepo. Reference `claude.runic_agent_observe.md` under "SDK Design" and "SDK implementation rules".
 
-1. Scaffold `packages/pulse-agent/` with `package.json`, `tsconfig.json`, and `src/index.ts`. Add to monorepo workspace.
+1. Scaffold `packages/runic-agent/` with `package.json`, `tsconfig.json`, and `src/index.ts`. Add to monorepo workspace.
 
-2. Implement `PulseAgent` class in `src/agent.ts`:
+2. Implement `RunicAgent` class in `src/agent.ts`:
    - Constructor: `{ apiKey: string, host?: string }`
    - `startRun(task, opts?): Promise<AgentRun>` — sends run_start payload, returns AgentRun handle
    - `_flush(payloads)` — fire-and-forget POST, silent on error
@@ -330,9 +330,9 @@ Build the `@pulse/agent` npm SDK package for this Pulse monorepo. Reference `cla
    - Truncates inputPreview and outputPreview to 500 chars
    - Does NOT call the API directly
 
-5. Add no-op mode: if `PULSE_DISABLED=true`, all methods are no-ops.
+5. Add no-op mode: if `RUNIC_DISABLED=true`, all methods are no-ops.
 
-6. Configure tsup build. Add `build` and `prepublishOnly` scripts. Confirm `import { PulseAgent } from '@pulse/agent'` works.
+6. Configure tsup build. Add `build` and `prepublishOnly` scripts. Confirm `import { RunicAgent } from '@runic/agent'` works.
 
 7. Write unit tests with mocked fetch. Test: correct payloads sent, truncation at 500 chars, buffer flushed on complete(), no-op mode makes zero fetch calls.
 
@@ -381,7 +381,7 @@ The spec only calls for a warning on missing `runId`. Missing `spanId` is not ha
 The routes live at `/api/agents/runs` (no `[projectId]` segment). Project scoping is done via `?project=<projectId>` query param, matching the existing dashboard pattern (`/dashboard/logs?project=...`). Both routes enforce the `?project` param is present before proceeding.
 
 ### Guard returns null-on-success, NextResponse-on-failure
-`requireProjectOwnership` returns `null` when access is granted and a `403 NextResponse` when not. Callers do `const denied = await requireProjectOwnership(...); if (denied) return denied`. This avoids throwing and keeps the early-return pattern consistent with existing Pulse API routes.
+`requireProjectOwnership` returns `null` when access is granted and a `403 NextResponse` when not. Callers do `const denied = await requireProjectOwnership(...); if (denied) return denied`. This avoids throwing and keeps the early-return pattern consistent with existing Runic API routes.
 
 ### Ownership check on run detail uses run's own projectId
 The `GET /api/agents/runs/[runId]` route first fetches the run, then passes `run.projectId` to the guard. An attacker cannot infer another project's run IDs because a 404 is returned first if the run doesn't exist at all — the ownership check is only exercised when the run exists. This prevents both data leakage and project enumeration.

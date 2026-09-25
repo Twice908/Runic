@@ -162,11 +162,11 @@ export default function AgentsPage() {
               key={i}
               className="flex items-center gap-4 px-6 py-4 border-b border-gray-100 dark:border-slate-700 last:border-b-0"
             >
-              <div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
-              <div className="h-5 w-20 animate-pulse rounded-full bg-gray-200 dark:bg-slate-700" />
+              <div className="h-4 w-48 animate-runic rounded bg-gray-200 dark:bg-slate-700" />
+              <div className="h-5 w-20 animate-runic rounded-full bg-gray-200 dark:bg-slate-700" />
               <div className="ml-auto flex gap-6">
-                <div className="h-4 w-16 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
-                <div className="h-4 w-12 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
+                <div className="h-4 w-16 animate-runic rounded bg-gray-200 dark:bg-slate-700" />
+                <div className="h-4 w-12 animate-runic rounded bg-gray-200 dark:bg-slate-700" />
               </div>
             </div>
           ))}

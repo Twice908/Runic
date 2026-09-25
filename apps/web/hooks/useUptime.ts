@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { UptimeStatus } from '@pulse/types'
+import type { UptimeStatus } from '@runic/types'
 
 const EMPTY: UptimeStatus = {
   current: 'up',

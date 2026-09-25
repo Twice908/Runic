@@ -1,5 +1,5 @@
 import pino from 'pino'
-import { prisma, Prisma } from '@pulse/db'
+import { prisma, Prisma } from '@runic/db'
 import { redis } from './redis'
 import { dispatch } from './notifications'
 

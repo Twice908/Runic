@@ -1,1 +1,1 @@
-export { prisma } from '@pulse/db'
+export { prisma } from '@runic/db'

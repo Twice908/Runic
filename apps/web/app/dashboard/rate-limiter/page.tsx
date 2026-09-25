@@ -13,9 +13,9 @@ import { relativeTime } from '@/lib/utils'
 function SkeletonCard() {
   return (
     <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-      <div className="h-3 w-24 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
-      <div className="mt-4 h-8 w-20 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
-      <div className="mt-2 h-3 w-32 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
+      <div className="h-3 w-24 animate-runic rounded bg-gray-200 dark:bg-slate-700" />
+      <div className="mt-4 h-8 w-20 animate-runic rounded bg-gray-200 dark:bg-slate-700" />
+      <div className="mt-2 h-3 w-32 animate-runic rounded bg-gray-200 dark:bg-slate-700" />
     </div>
   )
 }
@@ -221,7 +221,7 @@ export default function RateLimiterOverviewPage() {
       <section>
         <h2 className="text-base font-semibold text-gray-900 mb-3">Top Blocked IPs / Keys (24h)</h2>
         {offendersLoading ? (
-          <div className="h-40 rounded-xl bg-gray-100 animate-pulse" />
+          <div className="h-40 rounded-xl bg-gray-100 animate-runic" />
         ) : topOffenders.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center">
             <p className="text-sm text-gray-500">No blocked requests in the last 24 hours</p>
@@ -283,7 +283,7 @@ export default function RateLimiterOverviewPage() {
 
         <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4">
           {hitRateLoading ? (
-            <div className="h-[300px] animate-pulse rounded-xl bg-gray-100" />
+            <div className="h-[300px] animate-runic rounded-xl bg-gray-100" />
           ) : (
             <RateLimitHitRateChart data={hitRateData} range={range} isLoading={false} />
           )}

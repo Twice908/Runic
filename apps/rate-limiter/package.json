@@ -1,5 +1,5 @@
 {
-  "name": "@pulse/rate-limiter",
+  "name": "@runic/rate-limiter",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -10,8 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pulse/db": "*",
-    "@pulse/types": "*",
+    "@runic/db": "*",
+    "@runic/types": "*",
     "bullmq": "5.0.0",
     "dotenv": "16.4.0",
     "fastify": "4.28.0",
@@ -27,5 +27,15 @@
     "tsx": "4.0.0",
     "typescript": "5.5.4",
     "vitest": "2.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Twice908/runic.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "runic"
+  ]
 }

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { prisma, Prisma } from '@pulse/db'
+import { prisma, Prisma } from '@runic/db'
 import { verifyClerkJwt } from '../lib/auth'
 
 const rangeSchema = z.enum(['1h', '6h', '24h', '7d'])

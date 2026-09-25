@@ -1,4 +1,4 @@
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 
 const PLAN_REQUEST_LIMITS: Record<string, number> = {
   FREE: 50_000,

@@ -1,5 +1,5 @@
 import pino from 'pino'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { evaluateObserveAlerts } from '../lib/alert-evaluator'
 
 const logger = pino({ name: 'observe-alerts-processor' })

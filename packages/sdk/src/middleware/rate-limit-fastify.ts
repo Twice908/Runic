@@ -9,7 +9,7 @@ async function rateLimitPluginImpl(
 ): Promise<void> {
   const limiter = new RateLimiter(options)
 
-  // Mirrors pulsePlugin shutdown handling.
+  // Mirrors runicPlugin shutdown handling.
   const cleanup = () => { limiter.destroy() }
   process.once('SIGTERM', cleanup)
   process.once('SIGINT', cleanup)
@@ -65,5 +65,5 @@ async function rateLimitPluginImpl(
 
 export const rateLimitPlugin = fp(rateLimitPluginImpl, {
   fastify: '4.x',
-  name: 'pulse-rate-limit',
+  name: 'runic-rate-limit',
 })

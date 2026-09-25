@@ -5,7 +5,7 @@ import type { RateLimitOptions } from '../rate-limit'
 export function rateLimit(options: RateLimitOptions): RequestHandler {
   const limiter = new RateLimiter(options)
 
-  // Flush and clean up on graceful shutdown — mirrors pulse() shutdown handling.
+  // Flush and clean up on graceful shutdown — mirrors runic() shutdown handling.
   const cleanup = () => { limiter.destroy() }
   process.once('SIGTERM', cleanup)
   process.once('SIGINT', cleanup)
@@ -16,7 +16,7 @@ export function rateLimit(options: RateLimitOptions): RequestHandler {
     next: NextFunction,
   ): Promise<void> {
     try {
-      if (req.headers['x-pulse-skip-log'] === 'true') {
+      if (req.headers['x-runic-skip-log'] === 'true') {
         next()
         return
       }

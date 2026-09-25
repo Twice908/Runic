@@ -1,5 +1,5 @@
 {
-  "name": "@pulse/web",
+  "name": "@runic/web",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^5.2.0",
-    "@pulse/db": "*",
-    "@pulse/types": "*",
+    "@runic/db": "*",
+    "@runic/types": "*",
     "lucide-react": "^1.16.0",
     "next": "14.2.5",
     "next-themes": "^0.4.6",
@@ -30,5 +30,15 @@
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.5.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Twice908/runic.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "runic"
+  ]
 }

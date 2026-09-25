@@ -1,11 +1,11 @@
-name: 'Pulse Drift Check'
+name: 'Runic Drift Check'
 description: 'Check environment variable drift against your baseline'
 inputs:
   project-key:
-    description: 'Pulse API key'
+    description: 'Runic API key'
     required: true
   project-id:
-    description: 'Pulse project ID'
+    description: 'Runic project ID'
     required: true
   environment:
     description: 'Environment to check'
@@ -19,9 +19,9 @@ inputs:
     required: false
     default: ''
   api-url:
-    description: 'Pulse Drift API URL'
+    description: 'Runic Drift API URL'
     required: false
-    default: 'https://drift.pulseobserve.com'
+    default: 'https://drift.runicobserve.com'
 outputs:
   drift-score:
     description: 'Drift score 0-100'

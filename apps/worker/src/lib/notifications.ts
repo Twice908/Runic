@@ -1,6 +1,6 @@
 import pino from 'pino'
 import { Resend } from 'resend'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { env } from '../env'
 
 const logger = pino({ name: 'notifications' })
@@ -45,7 +45,7 @@ async function sendEmail(payload: NotificationPayload): Promise<void> {
   }
 
   const resend = new Resend(env.RESEND_API_KEY)
-  const subject = `[Pulse Alert] ${payload.alertType} triggered for ${payload.projectName}`
+  const subject = `[Runic Alert] ${payload.alertType} triggered for ${payload.projectName}`
   const dashboardUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'
 
   const html = `
@@ -80,7 +80,7 @@ async function sendSlack(payload: NotificationPayload): Promise<void> {
     blocks: [
       {
         type: 'header',
-        text: { type: 'plain_text', text: `Pulse Alert: ${payload.alertType}` },
+        text: { type: 'plain_text', text: `Runic Alert: ${payload.alertType}` },
       },
       {
         type: 'section',

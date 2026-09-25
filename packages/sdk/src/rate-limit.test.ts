@@ -5,8 +5,8 @@ import { RateLimiter } from './rate-limit'
 
 const BASE_ENV = {
   RATE_LIMITER_URL: 'http://localhost:3002',
-  PULSE_PROJECT_ID: 'proj_test',
-  PULSE_API_KEY: 'pk_test_123',
+  RUNIC_PROJECT_ID: 'proj_test',
+  RUNIC_API_KEY: 'pk_test_123',
   RATE_LIMITER_INTERNAL_TOKEN: 'internal_secret',
 }
 
@@ -34,7 +34,7 @@ describe('RateLimiter', () => {
     vi.useRealTimers()
   })
 
-  // ── Test 1: fail open when Pulse returns 5xx ────────────────────────────────
+  // ── Test 1: fail open when Runic returns 5xx ────────────────────────────────
 
   it('fails open when /v1/check returns 5xx', async () => {
     stubEnv()
@@ -125,9 +125,9 @@ describe('RateLimiter', () => {
     limiter.destroy()
   })
 
-  // ── Test 4: failOpen: false blocks traffic when Pulse is unreachable ────────
+  // ── Test 4: failOpen: false blocks traffic when Runic is unreachable ────────
 
-  it('blocks traffic and warns when failOpen is false and Pulse is unreachable', async () => {
+  it('blocks traffic and warns when failOpen is false and Runic is unreachable', async () => {
     stubEnv()
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNREFUSED')))

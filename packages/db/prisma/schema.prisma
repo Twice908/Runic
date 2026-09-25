@@ -225,7 +225,7 @@ enum DriftEventType {
   KEY_RESTORED
 }
 
-// ── PAO: Pulse Agent Observe ─────────────────────────────────────────────────
+// ── PAO: Runic Agent Observe ─────────────────────────────────────────────────
 
 model AgentDefinition {
   id        String   @id @default(cuid())

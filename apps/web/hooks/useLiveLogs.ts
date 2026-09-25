@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { RequestLogRow } from '@pulse/types'
+import type { RequestLogRow } from '@runic/types'
 
 const POLL_INTERVAL_MS = 3_000
 const MAX_LOG_BUFFER = 500

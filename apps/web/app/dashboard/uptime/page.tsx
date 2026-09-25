@@ -13,7 +13,7 @@ import {
 } from 'recharts'
 import { useUptime } from '@/hooks/useUptime'
 import { useAlerts } from '@/hooks/useAlerts'
-import type { UptimeCheck, AlertRule, AlertChannel } from '@pulse/types'
+import type { UptimeCheck, AlertRule, AlertChannel } from '@runic/types'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ function UptimeCard({ projectId, alert, onDisable, onEdit, disabling }: UptimeCa
   const { data, isLoading, error } = useUptime(projectId)
   const hourly = bucketByHour(data.checks)
 
-  if (isLoading) return <div className="h-48 rounded-xl bg-gray-100 animate-pulse" />
+  if (isLoading) return <div className="h-48 rounded-xl bg-gray-100 animate-runic" />
 
   if (error) {
     return (
@@ -358,7 +358,7 @@ export default function UptimePage() {
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="h-48 rounded-xl bg-gray-100 animate-pulse" />
+            <div key={i} className="h-48 rounded-xl bg-gray-100 animate-runic" />
           ))}
         </div>
       ) : uptimeAlerts.length === 0 ? (

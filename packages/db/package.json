@@ -1,5 +1,5 @@
 {
-  "name": "@pulse/db",
+  "name": "@runic/db",
   "version": "0.0.1",
   "private": true,
   "main": "dist/index.js",
@@ -21,5 +21,15 @@
   "devDependencies": {
     "prisma": "^5.16.0",
     "typescript": "^5.5.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Twice908/runic.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "runic"
+  ]
 }

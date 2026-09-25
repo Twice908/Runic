@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import IORedisMock from 'ioredis-mock'
 import Fastify from 'fastify'
 import { checkRoutes } from './check'
-import type { RateLimitRuleRecord } from '@pulse/types'
+import type { RateLimitRuleRecord } from '@runic/types'
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 

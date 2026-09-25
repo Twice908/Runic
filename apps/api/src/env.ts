@@ -9,7 +9,7 @@ const envSchema = z.object({
   CLERK_SECRET_KEY: z.string().min(1),
   CLERK_WEBHOOK_SECRET: z.string().min(1),
   RESEND_API_KEY: z.string().min(1).optional(),
-  RESEND_FROM_EMAIL: z.string().default('alerts@pulse.dev'),
+  RESEND_FROM_EMAIL: z.string().default('alerts@runic.dev'),
 })
 
 export const env = envSchema.parse(process.env)

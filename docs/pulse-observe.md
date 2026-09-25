@@ -1,14 +1,14 @@
-# CLAUDE.md — Pulse Project Context
+# CLAUDE.md — Runic Project Context
 
-> This file contains everything Claude needs to understand the Pulse product,
+> This file contains everything Claude needs to understand the Runic product,
 > its architecture, goals, and phase-by-phase build plan.
-> Always read this before writing any Pulse-related code.
+> Always read this before writing any Runic-related code.
 
 ---
 
-## What is Pulse?
+## What is Runic?
 
-Pulse is a **lightweight backend observability SaaS** for solo developers and small teams (2-10 people) who are priced out of Datadog and New Relic.
+Runic is a **lightweight backend observability SaaS** for solo developers and small teams (2-10 people) who are priced out of Datadog and New Relic.
 
 **Core value prop**: Drop one line into any Express/Fastify app → get real-time request logs, error tracking, slow endpoint detection, and uptime alerts. Pay $20-80/month.
 
@@ -29,7 +29,7 @@ Pulse is a **lightweight backend observability SaaS** for solo developers and sm
 | Billing | **Stripe** (metered usage-based billing) |
 | Email Alerts | **Resend** |
 | Slack Alerts | Slack Webhooks |
-| SDK | **`@pulse/node`** npm package |
+| SDK | **`@runic/node`** npm package |
 | Deployment | **Railway** (dev/staging), AWS (prod later) |
 
 ---
@@ -75,13 +75,13 @@ TimescaleDB       PostgreSQL
 ## Monorepo Structure
 
 ```
-pulse/
+runic/
 ├── apps/
 │   ├── api/              ← Fastify ingestion + REST API
 │   ├── worker/           ← BullMQ worker service
 │   └── web/              ← Next.js 14 dashboard
 ├── packages/
-│   ├── sdk/              ← @pulse/node npm package
+│   ├── sdk/              ← @runic/node npm package
 │   ├── db/               ← Prisma schema + client (shared)
 │   └── types/            ← shared TypeScript types
 ├── CLAUDE.system.md
@@ -222,7 +222,7 @@ Architecture defined, stack chosen, data models designed.
 - Alert history log
 
 ### 📋 Phase 5 — SDK Polish
-- Clean `@pulse/node` package
+- Clean `@runic/node` package
 - Express middleware + Fastify plugin
 - Batching: flush every 500ms or 10 events
 - Strip sensitive headers automatically
@@ -239,7 +239,7 @@ Architecture defined, stack chosen, data models designed.
 
 ## Alert System — DO NOT TOUCH
 
-The alert system (error rate, response time, uptime, and rate limit spike alerts) is fully working and battle-tested. Never modify, refactor, or "improve" any alert logic in any future work on Pulse Observe or Rate Limiter.
+The alert system (error rate, response time, uptime, and rate limit spike alerts) is fully working and battle-tested. Never modify, refactor, or "improve" any alert logic in any future work on Runic Observe or Rate Limiter.
 
 Files that are off-limits:
 - `apps/worker/src/lib/alert-evaluator.ts`
@@ -258,7 +258,7 @@ If a future task touches alerts, stop and ask the user before proceeding.
 2. **API keys are always hashed** (SHA-256) before storage — never store or log the raw key.
 3. **All data scoped to project** — a request with API key X must never read or write project Y's data.
 4. **No raw request bodies stored** — only metadata (method, route, status, response time).
-5. **SDK never throws, never blocks** — if Pulse is down, the user's app must still work perfectly.
+5. **SDK never throws, never blocks** — if Runic is down, the user's app must still work perfectly.
 6. **GDPR compliance** — project deletion cascades to all logs, errors, and checks. Users can wipe their data.
 7. **Sensitive headers stripped** — `Authorization`, `Cookie`, `X-Api-Key` never leave the user's server.
 
@@ -268,11 +268,11 @@ If a future task touches alerts, stop and ask the user before proceeding.
 
 ```ts
 // What the developer writes — nothing more
-import { pulse } from '@pulse/node'
-app.use(pulse({ apiKey: 'pk_live_...' }))
+import { runic } from '@runic/node'
+app.use(runic({ apiKey: 'pk_live_...' }))
 
 // What happens internally (simplified)
-function pulseMiddleware(config) {
+function runicMiddleware(config) {
   return (req, res, next) => {
     const start = Date.now()
     res.on('finish', () => {
@@ -331,7 +331,7 @@ function pulseMiddleware(config) {
 
 ## What "Done" Looks Like
 
-- A developer signs up, installs `@pulse/node`, and sees their **first request log within 5 minutes**.
+- A developer signs up, installs `@runic/node`, and sees their **first request log within 5 minutes**.
 - Real teams paying **$19-79/month**.
 - Ingestion handles **1,000 req/sec** without dropping events.
 - Dashboard feels **fast and trustworthy** — not a toy side project.

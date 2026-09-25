@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { Prisma } from '@pulse/db'
+import { Prisma } from '@runic/db'
 import { DriftEventType } from '@prisma/client'
 import { prisma } from '../plugins/prisma'
 import { redis } from '../plugins/redis'

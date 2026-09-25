@@ -75,9 +75,9 @@ export default function RunDetailPage({ params }: PageProps) {
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto p-8 space-y-6">
-        <div className="h-4 w-28 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
-        <div className="h-36 animate-pulse rounded-xl bg-gray-100 dark:bg-slate-800" />
-        <div className="h-64 animate-pulse rounded-xl bg-gray-100 dark:bg-slate-800" />
+        <div className="h-4 w-28 animate-runic rounded bg-gray-200 dark:bg-slate-700" />
+        <div className="h-36 animate-runic rounded-xl bg-gray-100 dark:bg-slate-800" />
+        <div className="h-64 animate-runic rounded-xl bg-gray-100 dark:bg-slate-800" />
       </div>
     )
   }

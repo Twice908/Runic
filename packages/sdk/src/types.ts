@@ -1,4 +1,4 @@
-export interface PulseConfig {
+export interface RunicConfig {
   apiKey: string
   host?: string
   timeout?: number
@@ -19,7 +19,7 @@ export interface IngestEvent {
   timestamp: string // ISO 8601
 }
 
-export interface PulseClientConfig {
+export interface RunicClientConfig {
   apiKey: string
   host: string
   timeout: number

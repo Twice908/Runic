@@ -1,15 +1,15 @@
-# claude.pulse_agent_observe.md
-# PAO — Pulse Agent Observe: Claude Code Project Instructions
+# claude.runic_agent_observe.md
+# PAO — Runic Agent Observe: Claude Code Project Instructions
 
 ---
 
 ## What This Feature Is
 
-**PAO (Pulse Agent Observe)** is an AI agent observability layer built on top of Pulse's existing backend monitoring infrastructure. Where Pulse tracks HTTP requests, PAO tracks AI agent executions — LLM calls, tool invocations, inter-agent messages, cost/token usage, and anomalies like infinite loops or runaway cost.
+**PAO (Runic Agent Observe)** is an AI agent observability layer built on top of Runic's existing backend monitoring infrastructure. Where Runic tracks HTTP requests, PAO tracks AI agent executions — LLM calls, tool invocations, inter-agent messages, cost/token usage, and anomalies like infinite loops or runaway cost.
 
-PAO is **not a new product**. It is a new event type and set of views within Pulse. Everything reuses the existing ingestion pipeline, queue, worker, and dashboard shell.
+PAO is **not a new product**. It is a new event type and set of views within Runic. Everything reuses the existing ingestion pipeline, queue, worker, and dashboard shell.
 
-**Target user**: A developer running an AI agent (LangChain, CrewAI, custom OpenAI loops, etc.) who wants the same observability they'd get from Pulse for HTTP — but for agent runs. They want to answer: What did my agent do? How long did each step take? How much did it cost? Did it loop?
+**Target user**: A developer running an AI agent (LangChain, CrewAI, custom OpenAI loops, etc.) who wants the same observability they'd get from Runic for HTTP — but for agent runs. They want to answer: What did my agent do? How long did each step take? How much did it cost? Did it loop?
 
 ---
 
@@ -120,17 +120,17 @@ CREATE INDEX ON agent_spans (project_id, started_at DESC);
 
 ## SDK Design
 
-The SDK lives in `packages/pulse-agent/` (a separate npm package: `@pulse/agent`).
+The SDK lives in `packages/runic-agent/` (a separate npm package: `@runic/agent`).
 
 ### Public API
 
 ```ts
-import { PulseAgent } from '@pulse/agent'
+import { RunicAgent } from '@runic/agent'
 
-const pulse = new PulseAgent({ apiKey: 'pk_live_...' })
+const runic = new RunicAgent({ apiKey: 'pk_live_...' })
 
 // Start a top-level run
-const run = await pulse.startRun('Summarize quarterly report', {
+const run = await runic.startRun('Summarize quarterly report', {
   metadata: { triggeredBy: 'cron' }
 })
 
@@ -162,7 +162,7 @@ await run.complete({ status: 'failed', errorMessage: err.message })
 - The SDK buffers spans in memory and flushes on `run.complete()` OR after 5 seconds, whichever comes first
 - No span data is ever logged to stdout by default
 - `inputPreview` and `outputPreview` are truncated to 500 chars by the SDK before sending — never send full prompts
-- The SDK exports a no-op stub when `PULSE_DISABLED=true` is set, so it never affects test environments
+- The SDK exports a no-op stub when `RUNIC_DISABLED=true` is set, so it never affects test environments
 
 ### Ingest payload shape
 
@@ -255,7 +255,7 @@ All new pages live under `/dashboard/agents/` in the Next.js app.
 - `/api/agents/runs` and `/api/agents/runs/[runId]` Next.js API routes
 - Run list UI page
 - Basic run detail page (span table only, no Gantt yet)
-- SDK: `PulseAgent` class with `startRun`, `startSpan`, `span.end`, `run.complete`
+- SDK: `RunicAgent` class with `startRun`, `startSpan`, `span.end`, `run.complete`
 
 ### Phase B — Gantt Timeline + Agent Topology Graph
 - Gantt chart component (Recharts or custom SVG)
@@ -275,13 +275,13 @@ All new pages live under `/dashboard/agents/` in the Next.js app.
 
 ### Phase E — Unified Timeline
 - Merge HTTP request logs + agent spans on one timeline per time window
-- Correlate agent runs triggered by HTTP requests (via `x-pulse-run-id` header)
+- Correlate agent runs triggered by HTTP requests (via `x-runic-run-id` header)
 
 ---
 
 ## Coding Conventions
 
-Follow all existing Pulse conventions exactly:
+Follow all existing Runic conventions exactly:
 
 - **TypeScript everywhere** — no `any`, explicit return types on all functions
 - **Zod for all validation** — every ingest route input validated with Zod schema before queuing
@@ -290,7 +290,7 @@ Follow all existing Pulse conventions exactly:
 - **Error handling** — all worker handlers wrapped in try/catch; failed jobs retry 3x with exponential backoff; dead-letter after 3 failures
 - **Environment variables** — all config via env vars, validated at startup with `zod.parse` on `process.env`
 - **File naming** — `kebab-case.ts` for files, `PascalCase` for classes and types, `camelCase` for functions
-- **No console.log in production code** — use the existing Pino logger instance (`import { logger } from '@pulse/logger'`)
+- **No console.log in production code** — use the existing Pino logger instance (`import { logger } from '@runic/logger'`)
 - **Tests** — unit tests for worker handlers (mock Prisma), integration tests for ingest routes (real Redis, test DB)
 
 ---

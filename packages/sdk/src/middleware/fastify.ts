@@ -1,19 +1,19 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import fp from 'fastify-plugin'
-import { PulseClient } from '../core/client'
+import { RunicClient } from '../core/client'
 import { BatchBuffer } from '../core/buffer'
 import { setClient } from '../core/errors'
-import type { PulseConfig, IngestEvent } from '../types'
+import type { RunicConfig, IngestEvent } from '../types'
 
 // Augment FastifyRequest to hold the per-request start time.
 declare module 'fastify' {
   interface FastifyRequest {
-    pulseStartTime?: number
+    runicStartTime?: number
   }
 }
 
-async function pulsePluginImpl(fastify: FastifyInstance, config: PulseConfig): Promise<void> {
-  const client = new PulseClient({
+async function runicPluginImpl(fastify: FastifyInstance, config: RunicConfig): Promise<void> {
+  const client = new RunicClient({
     apiKey: config.apiKey,
     host: config.host,
     timeout: config.timeout,
@@ -40,12 +40,12 @@ async function pulsePluginImpl(fastify: FastifyInstance, config: PulseConfig): P
   const ignoreRoutes = config.ignoreRoutes ?? []
 
   fastify.addHook('onRequest', async (request: FastifyRequest) => {
-    request.pulseStartTime = Date.now()
+    request.runicStartTime = Date.now()
   })
 
   fastify.addHook('onResponse', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      if (request.headers['x-pulse-skip-log'] === 'true') return
+      if (request.headers['x-runic-skip-log'] === 'true') return
       if (ignoreMethods.has(request.method.toUpperCase())) return
 
       const path = request.url.split('?')[0] ?? request.url
@@ -53,7 +53,7 @@ async function pulsePluginImpl(fastify: FastifyInstance, config: PulseConfig): P
         if (path.startsWith(prefix)) return
       }
 
-      const responseTime = Date.now() - (request.pulseStartTime ?? Date.now())
+      const responseTime = Date.now() - (request.runicStartTime ?? Date.now())
       const event: IngestEvent = {
         method: request.method,
         // routerPath is the matched route pattern (e.g. /users/:id); fall back to raw URL.
@@ -69,7 +69,7 @@ async function pulsePluginImpl(fastify: FastifyInstance, config: PulseConfig): P
   })
 }
 
-export const pulsePlugin = fp(pulsePluginImpl, {
+export const runicPlugin = fp(runicPluginImpl, {
   fastify: '4.x',
-  name: 'pulse',
+  name: 'runic',
 })

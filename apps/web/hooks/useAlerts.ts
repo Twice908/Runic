@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { AlertRule, AlertHistoryEntry } from '@pulse/types'
+import type { AlertRule, AlertHistoryEntry } from '@runic/types'
 
 interface AlertsResult {
   data: AlertRule[]

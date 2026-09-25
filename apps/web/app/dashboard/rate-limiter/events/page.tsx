@@ -141,7 +141,7 @@ export default function RateLimiterEventsPage() {
           {/* Live indicator */}
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span
-              className={`h-2 w-2 rounded-full ${isPolling ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}
+              className={`h-2 w-2 rounded-full ${isPolling ? 'bg-green-500 animate-runic' : 'bg-gray-300'}`}
             />
             {isPolling ? 'Live' : 'Paused'}
           </div>

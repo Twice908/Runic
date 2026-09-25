@@ -1,4 +1,4 @@
-# Pulse — Task Tracker
+# Runic — Task Tracker
 
 > Claude updates this file at the end of every session. Check here before starting work to know exactly where things stand.
 
@@ -182,17 +182,17 @@ The Prisma DLL was locked by running dev processes during the build — run `pri
 
 ---
 
-## ✅ Phase 5 — SDK (`@pulse/node`) (COMPLETE)
+## ✅ Phase 5 — SDK (`@runic/node`) (COMPLETE)
 
-- [x] `packages/sdk/package.json` — `@pulse/node` v0.1.0, MIT, CommonJS, no runtime deps except `fastify-plugin`
-- [x] `src/types.ts` — `PulseConfig`, `IngestEvent`, `PulseClientConfig` matching exact Fastify ingest schema
+- [x] `packages/sdk/package.json` — `@runic/node` v0.1.0, MIT, CommonJS, no runtime deps except `fastify-plugin`
+- [x] `src/types.ts` — `RunicConfig`, `IngestEvent`, `RunicClientConfig` matching exact Fastify ingest schema
 - [x] `src/core/sanitizer.ts` — blocks auth/cookie headers; redacts password/secret/token/apiKey/cvv/ssn fields; truncates body at 2048 chars
 - [x] `src/core/buffer.ts` — `BatchBuffer`: 500ms flush interval, max 10 events, immediate flush on size limit, `timer.unref()` so process can exit cleanly
-- [x] `src/core/client.ts` — `PulseClient`: native fetch, `Authorization: Bearer`, AbortController timeout, per-status warnings (401/402/429), never throws
+- [x] `src/core/client.ts` — `RunicClient`: native fetch, `Authorization: Bearer`, AbortController timeout, per-status warnings (401/402/429), never throws
 - [x] `src/core/errors.ts` — `captureError(error, context?)`: bypasses buffer, sends directly, warns if middleware not initialized
 - [x] `src/middleware/express.ts` — patches `res.end`, captures matched route pattern via `req.route?.path`, SIGTERM/SIGINT flush, ignoreRoutes/ignoreMethods
 - [x] `src/middleware/fastify.ts` — `onRequest`/`onResponse` hooks, `routerPath` for matched route, wrapped with `fastify-plugin` to avoid scope isolation
-- [x] `src/index.ts` — exports only: `pulse`, `pulsePlugin`, `captureError`, `PulseConfig` type
+- [x] `src/index.ts` — exports only: `runic`, `runicPlugin`, `captureError`, `RunicConfig` type
 - [x] `README.md` — installation, Express/Fastify quickstarts, full config table, what data is/isn't collected, graceful shutdown note
 - [x] `test-app/` — Express app on port 4000 with 5 test routes, points to `http://localhost:3001`
 - [x] `.npmignore` — excludes `src/`, `test-app/`, `tsconfig.json`
@@ -204,7 +204,7 @@ The Prisma DLL was locked by running dev processes during the build — run `pri
 cd packages/sdk && npm run build
 
 # 2. Set your API key (from http://localhost:3000/dashboard)
-export PULSE_API_KEY=pk_live_...
+export RUNIC_API_KEY=pk_live_...
 
 # 3. Run the test app (docker compose + npm run dev must already be running)
 cd packages/sdk/test-app && npm install && node index.js

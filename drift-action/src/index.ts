@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 
-const DEFAULT_API_URL = 'https://drift.pulseobserve.com'
+const DEFAULT_API_URL = 'https://drift.runicobserve.com'
 const TIMEOUT_MS = 10_000
 
 interface CiCheckResult {
@@ -20,7 +20,7 @@ async function run(): Promise<void> {
     const ignoreKeys = core.getInput('ignore-keys')
     const apiUrl = core.getInput('api-url') || DEFAULT_API_URL
 
-    // Mirrors exactly what `pulse-drift ci-check --json` does internally.
+    // Mirrors exactly what `runic-drift ci-check --json` does internally.
     // Bundled via ncc — no subprocess or installed binary required.
     const qs = new URLSearchParams({ environment })
     if (ignoreKeys) qs.set('ignoreKeys', ignoreKeys)

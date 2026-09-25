@@ -1,7 +1,7 @@
-# Pulse Rate Limiter — Task Tracker
+# Runic Rate Limiter — Task Tracker
 
 > This file tracks all development tasks for the Rate Limiter product line.
-> Rate Limiter is **additive** — it shares all Pulse infrastructure and never replaces it.
+> Rate Limiter is **additive** — it shares all Runic infrastructure and never replaces it.
 > Always check `Claude.project.rate_limit.md` before writing any code.
 
 ---
@@ -42,7 +42,7 @@
 ### Fastify Service Bootstrap ✅
 - [x] `apps/rate-limiter/src/server.ts` — Fastify instance with pino logger, auth middleware wiring, consistent error handler
 - [x] `apps/rate-limiter/src/plugins/redis.ts` — shared ioredis client (`RATE_LIMITER_REDIS_URL` or fall back to `REDIS_URL`)
-- [x] `apps/rate-limiter/src/plugins/prisma.ts` — re-exports `prisma` from `@pulse/db` (never instantiates a new one)
+- [x] `apps/rate-limiter/src/plugins/prisma.ts` — re-exports `prisma` from `@runic/db` (never instantiates a new one)
 - [x] `apps/rate-limiter/src/middleware/auth.ts` — `requireInternalToken` for `/v1/rules`; `resolveProject` (with Redis project cache) for `/v1/check`
 
 ### `/v1/check` — Hot Path ✅
@@ -81,7 +81,7 @@
 
 ## ✅ Phase RL-2 — Dashboard UI (COMPLETE)
 
-> Follow existing Pulse Observe component patterns exactly. No new design systems.
+> Follow existing Runic Observe component patterns exactly. No new design systems.
 
 ### Next.js Proxy Routes ✅
 - [x] `GET /api/rate-limiter/[projectId]/rules` — proxy to `GET /v1/rules/:projectId`
@@ -160,7 +160,7 @@
 
 ---
 
-## ✅ Phase RL-4 — SDK Middleware (`@pulse/node`) (COMPLETE)
+## ✅ Phase RL-4 — SDK Middleware (`@runic/node`) (COMPLETE)
 
 > Extend the existing SDK. Do not create a separate package unless the file exceeds 300 lines.
 
@@ -170,11 +170,11 @@
   - [x] Background refresh every 30 seconds via `setInterval`
   - [x] HTTP call to `/v1/check` for actual enforcement (Redis counter lives on the server)
   - [x] Local pre-filter: skip `/v1/check` when cached rules have no match for the path (perf optimization)
-  - [x] If Pulse unreachable: **fail open** — log error, never block user traffic
+  - [x] If Runic unreachable: **fail open** — log error, never block user traffic
   - [x] If check exceeds 10ms: AbortController fires, fail open
   - [x] Set RFC 6585 headers on all responses when rule meta is present
-- [x] Express adapter: `packages/sdk/src/middleware/rate-limit-express.ts` — `rateLimit()` mirrors `pulse()` pattern exactly
-- [x] Fastify adapter: `packages/sdk/src/middleware/rate-limit-fastify.ts` — `rateLimitPlugin` wrapped with `fastify-plugin`, mirrors `pulsePlugin` pattern exactly
+- [x] Express adapter: `packages/sdk/src/middleware/rate-limit-express.ts` — `rateLimit()` mirrors `runic()` pattern exactly
+- [x] Fastify adapter: `packages/sdk/src/middleware/rate-limit-fastify.ts` — `rateLimitPlugin` wrapped with `fastify-plugin`, mirrors `runicPlugin` pattern exactly
 - [x] Export `rateLimit`, `rateLimitPlugin`, `RateLimitOptions`, `RateLimitRule`, `LimitedContext` from `packages/sdk/src/index.ts`
 - [x] Test 1: fail-open when `/v1/check` returns 503 ✓
 - [x] Test 2: rules fetched on startup + refreshed every 30s (fake timers + `advanceTimersByTimeAsync`) ✓
@@ -223,7 +223,7 @@
 - [ ] Developer adds `rateLimit({ rules: 'auto' })` and sees `/api/login` protected within 2 minutes
 - [ ] Rule created in dashboard goes live within 30 seconds (no redeploy required)
 - [ ] `/v1/check` benchmarks at 50,000 req/s on a single node
-- [ ] Zero false positives from fail-open strategy (verified with Pulse unreachable test)
+- [ ] Zero false positives from fail-open strategy (verified with Runic unreachable test)
 - [ ] All RFC 6585 headers present on every rate-limited response
 - [ ] Zero TypeScript errors across all packages
 - [ ] Proxy mode is NOT required for MVP
@@ -233,7 +233,7 @@
 ## Architecture Notes
 
 - **Never touch Observe** — Rate Limiter is additive; do not modify existing routes, models, or services
-- **Import, never duplicate** — use `@pulse/database`, `@pulse/queue`, `@pulse/config` directly
+- **Import, never duplicate** — use `@runic/database`, `@runic/queue`, `@runic/config` directly
 - **Hot path invariants**: no DB reads on `/v1/check`; all event writes via BullMQ; abort + fail open after 10ms
 - **Redis key isolation**: all keys prefixed `rl:{projectId}:` — cross-project access is a security bug
 - **No PII in Redis**: `keyValue` = IP / opaque API key / userId only — never email, name, password

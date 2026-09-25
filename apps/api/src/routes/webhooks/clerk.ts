@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { Webhook } from 'svix'
 import pino from 'pino'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { env } from '../../env'
 
 const logger = pino({ name: 'clerk-webhook' })

@@ -18,7 +18,7 @@ export interface DriftSnapshotResult {
   status?: number
 }
 
-const DEFAULT_API_URL = 'https://drift.pulseobserve.com'
+const DEFAULT_API_URL = 'https://drift.runicobserve.com'
 const DEFAULT_TIMEOUT_MS = 5000
 const DEFAULT_AGENT_VERSION = '0.0.1'
 
@@ -66,7 +66,7 @@ export async function driftSnapshot(
     if (!res.ok) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[pulse-drift] snapshot failed: HTTP ${res.status}`,
+        `[runic-drift] snapshot failed: HTTP ${res.status}`,
       )
       return { ok: false, keyCount: keys.length, status: res.status }
     }
@@ -75,7 +75,7 @@ export async function driftSnapshot(
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     // eslint-disable-next-line no-console
-    console.warn('[pulse-drift] snapshot failed:', message)
+    console.warn('[runic-drift] snapshot failed:', message)
     return { ok: false, keyCount: 0 }
   }
 }

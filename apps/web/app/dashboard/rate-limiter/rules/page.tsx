@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useRules, useRuleToggle } from '@/hooks/useRateLimiter'
 import RuleForm, { type RuleFormValues } from '@/components/RuleForm'
-import type { RateLimitRuleRecord } from '@pulse/types'
+import type { RateLimitRuleRecord } from '@runic/types'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -179,7 +179,7 @@ function SkeletonRows() {
         <tr key={i} className="border-b border-gray-100">
           {[1, 2, 3, 4, 5, 6, 7].map((j) => (
             <td key={j} className="px-4 py-3">
-              <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-20 animate-runic rounded bg-gray-200" />
             </td>
           ))}
         </tr>

@@ -96,8 +96,8 @@ export class RateLimiter {
 
   constructor(options: RateLimitOptions) {
     this.rlUrl = (process.env['RATE_LIMITER_URL'] ?? '').replace(/\/$/, '') || null
-    this.projectId = process.env['PULSE_PROJECT_ID'] ?? null
-    this.apiKey = process.env['PULSE_API_KEY'] ?? null
+    this.projectId = process.env['RUNIC_PROJECT_ID'] ?? null
+    this.apiKey = process.env['RUNIC_API_KEY'] ?? null
     this.internalToken = process.env['RATE_LIMITER_INTERNAL_TOKEN'] ?? ''
     this._failOpen = options.failOpen ?? true
     this._headerPrefix = options.headerPrefix ?? 'X-RateLimit'
@@ -105,10 +105,10 @@ export class RateLimiter {
     this.onLimited = options.onLimited
 
     if (!this._failOpen) {
-      // Warn loudly: setting failOpen to false means a Pulse outage blocks all
+      // Warn loudly: setting failOpen to false means a Runic outage blocks all
       // traffic on rate-limited paths in the developer's own backend.
       console.warn(
-        '[Pulse] rateLimit: failOpen is set to false — any Pulse service outage will block user traffic on rate-limited paths',
+        '[Runic] rateLimit: failOpen is set to false — any Runic service outage will block user traffic on rate-limited paths',
       )
     }
 
@@ -198,7 +198,7 @@ export class RateLimiter {
 
       if (!res.ok) {
         console.warn(
-          `[Pulse] rateLimit: /v1/check returned ${res.status} — ${this._failOpen ? 'failing open' : 'blocking traffic'}`,
+          `[Runic] rateLimit: /v1/check returned ${res.status} — ${this._failOpen ? 'failing open' : 'blocking traffic'}`,
         )
         return this._failOpen ? { allowed: true } : { allowed: false }
       }
@@ -228,10 +228,10 @@ export class RateLimiter {
     } catch (err) {
       clearTimeout(timer)
       if (err instanceof Error && err.name === 'AbortError') {
-        console.warn(`[Pulse] rateLimit: check timed out (>${this._checkTimeout}ms) — failing open`)
+        console.warn(`[Runic] rateLimit: check timed out (>${this._checkTimeout}ms) — failing open`)
       } else {
         console.error(
-          `[Pulse] rateLimit: /v1/check unreachable — ${this._failOpen ? 'failing open' : 'blocking traffic'}`,
+          `[Runic] rateLimit: /v1/check unreachable — ${this._failOpen ? 'failing open' : 'blocking traffic'}`,
         )
       }
       return this._failOpen ? { allowed: true } : { allowed: false }

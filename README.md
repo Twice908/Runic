@@ -1,4 +1,4 @@
-# Pulse
+# Runic
 
 > Backend observability for solo developers and small teams — without the Datadog price tag.
 
@@ -10,7 +10,7 @@ Drop one line into any Express or Fastify app. Get real-time request logs, error
 
 You ship a backend on Railway or Render. Something breaks in production. You find out from an angry user. You have no idea what happened, when it started, or which endpoint is slow. Datadog costs $300/month before you've made a dollar.
 
-Pulse fixes this for indie devs and small teams.
+Runic fixes this for indie devs and small teams.
 
 ---
 
@@ -64,7 +64,7 @@ TimescaleDB      PostgreSQL
 | Billing | **Stripe** (metered usage-based) — Phase 6 |
 | Email Alerts | **Resend** |
 | Slack Alerts | Slack Webhooks |
-| SDK | **`@pulse/node`** npm package |
+| SDK | **`@runic/node`** npm package |
 | Monorepo | **Turborepo** + npm workspaces |
 
 ---
@@ -72,14 +72,14 @@ TimescaleDB      PostgreSQL
 ## Monorepo Structure
 
 ```
-pulse/
+runic/
 ├── apps/
 │   ├── api/              Fastify ingestion + REST API          :3001
 │   ├── worker/           BullMQ worker — processes log queue
 │   └── web/              Next.js 14 dashboard                  :3000
 ├── packages/
 │   ├── db/               Prisma schema + shared PrismaClient
-│   ├── sdk/              @pulse/node — Express + Fastify middleware
+│   ├── sdk/              @runic/node — Express + Fastify middleware
 │   └── types/            Shared TypeScript interfaces
 ├── TASKS.md              ← Living task tracker (check this first)
 ├── turbo.json
@@ -101,8 +101,8 @@ pulse/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/<your-username>/pulse.git
-cd pulse
+git clone https://github.com/<your-username>/runic.git
+cd runic
 npm install
 ```
 
@@ -134,9 +134,9 @@ npx prisma db execute --file ./prisma/timescale-setup.sql --schema ./prisma/sche
 npm run dev
 
 # Or individually:
-npm run dev -w @pulse/api       # Fastify API  → http://localhost:3001
-npm run dev -w @pulse/worker    # BullMQ worker
-npm run dev -w @pulse/web       # Next.js UI   → http://localhost:3000
+npm run dev -w @runic/api       # Fastify API  → http://localhost:3001
+npm run dev -w @runic/worker    # BullMQ worker
+npm run dev -w @runic/web       # Next.js UI   → http://localhost:3000
 ```
 
 ---
@@ -198,23 +198,23 @@ When the limit is exceeded the API returns `429 Too Many Requests`. The limit is
 ## SDK Usage
 
 ```ts
-import { pulse } from '@pulse/node'
+import { runic } from '@runic/node'
 
 // Express
-app.use(pulse({ apiKey: 'pk_live_...' }))
+app.use(runic({ apiKey: 'pk_live_...' }))
 
 // Fastify
-app.register(pulse, { apiKey: 'pk_live_...' })
+app.register(runic, { apiKey: 'pk_live_...' })
 ```
 
-The SDK is fire-and-forget — it never blocks your request, never throws, and buffers events (flushes every 500ms or 10 events). If Pulse is down, your app keeps working.
+The SDK is fire-and-forget — it never blocks your request, never throws, and buffers events (flushes every 500ms or 10 events). If Runic is down, your app keeps working.
 
 ### Config options
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `apiKey` | required | Your project API key |
-| `endpoint` | `https://api.usepulse.dev` | Override for self-hosted or local dev |
+| `endpoint` | `https://api.userunic.dev` | Override for self-hosted or local dev |
 | `ignoreRoutes` | `[]` | Route patterns to skip (e.g. `/health`) |
 | `ignoreMethods` | `[]` | HTTP methods to skip (e.g. `OPTIONS`) |
 
@@ -252,7 +252,7 @@ Billing via Stripe metered billing — you only pay for what you use.
 | 2 | Dashboard Foundation (project CRUD, log table, live feed) | ✅ Complete |
 | 3 | Analytics & Metrics (TimescaleDB aggregates, Recharts charts) | ✅ Complete |
 | 4 | Alerting & Uptime (Resend, Slack, repeatable BullMQ jobs) | ✅ Complete |
-| 5 | SDK (`@pulse/node` npm package — Express + Fastify) | ✅ Complete |
+| 5 | SDK (`@runic/node` npm package — Express + Fastify) | ✅ Complete |
 | 6 | Billing (Stripe metered, plan enforcement, per-plan rate limits) | 📋 Planned |
 
 See [TASKS.md](./TASKS.md) for the detailed checklist of every task within each phase.

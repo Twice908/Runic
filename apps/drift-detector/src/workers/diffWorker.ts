@@ -60,7 +60,7 @@ function buildAlertContent(
 ): { subject: string; message: string } {
   if (alertType === 'key_missing_in_env') {
     return {
-      subject: `[Pulse Drift] ${event.keyName} missing in ${envName}`,
+      subject: `[Runic Drift] ${event.keyName} missing in ${envName}`,
       message: `${event.keyName} is present in production (baseline) but missing in ${envName}. Check your ${envName} configuration.`,
     }
   }
@@ -68,7 +68,7 @@ function buildAlertContent(
     const days = Math.floor(event.daysSinceRotation ?? 0)
     const schedule = event.rotationDays ?? 0
     return {
-      subject: `[Pulse Drift] ${event.keyName} rotation overdue`,
+      subject: `[Runic Drift] ${event.keyName} rotation overdue`,
       message: `${event.keyName} has not been rotated in ${days} days. Rotation schedule: every ${schedule} days.`,
     }
   }
@@ -84,7 +84,7 @@ function buildAlertContent(
   if (extra.length > 0) parts.push(`Extra: ${extra.join(', ')}.`)
   const tail = parts.length > 0 ? ' ' + parts.join(' ') : ''
   return {
-    subject: `[Pulse Drift] Drift detected in ${envName}`,
+    subject: `[Runic Drift] Drift detected in ${envName}`,
     message: `${allNewEvents.length} key(s) drifted in ${envName} vs production baseline.${tail}`,
   }
 }

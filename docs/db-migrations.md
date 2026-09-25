@@ -6,10 +6,10 @@ How to run Prisma migrations against the right database without nuking prod.
 
 | Target            | Database         | Env file   | Command                            |
 | ----------------- | ---------------- | ---------- | ---------------------------------- |
-| Prod / main       | `pulse`          | `.env`     | `npx prisma migrate deploy`        |
-| PAO feature dev   | `pulse_pao_dev`  | `.env.pao` | `npx prisma migrate dev --name X`  |
+| Prod / main       | `runic`          | `.env`     | `npx prisma migrate deploy`        |
+| PAO feature dev   | `runic_pao_dev`  | `.env.pao` | `npx prisma migrate dev --name X`  |
 
-Both databases live in the **same** local Docker container (`pulse-timescaledb`, port 5432) — only the database name differs.
+Both databases live in the **same** local Docker container (`runic-timescaledb`, port 5432) — only the database name differs.
 
 All commands run from **`packages/db/`**.
 
@@ -19,22 +19,22 @@ All commands run from **`packages/db/`**.
 
 Prisma reads `DATABASE_URL` from the environment. Whatever value is exported when you run the command wins — schema file, `.env`, and `.env.pao` are all just sources for that one variable.
 
-- `c:/Users/Pranalsingh Rajput/Desktop/Pulse/.env` → points to **`pulse`** (prod-like / main branch)
-- `c:/Users/Pranalsingh Rajput/Desktop/Pulse/.env.pao` → points to **`pulse_pao_dev`** (this branch only)
+- `c:/Users/Pranalsingh Rajput/Desktop/Runic/.env` → points to **`runic`** (prod-like / main branch)
+- `c:/Users/Pranalsingh Rajput/Desktop/Runic/.env.pao` → points to **`runic_pao_dev`** (this branch only)
 - `packages/db/prisma/schema.prisma` → reads `env("DATABASE_URL")`, never edit the URL here
 
 **You never edit `schema.prisma` to swap DBs. You only change which env var is loaded when you run the command.**
 
 ---
 
-## Running migrations on PROD-LIKE DB (`pulse`)
+## Running migrations on PROD-LIKE DB (`runic`)
 
 Use on `main` only, after PR review.
 
 ```powershell
 cd packages/db
 
-# Prisma auto-loads .env from this folder's parents; .env points at `pulse`.
+# Prisma auto-loads .env from this folder's parents; .env points at `runic`.
 npx prisma migrate deploy
 npx prisma generate
 ```
@@ -43,7 +43,7 @@ npx prisma generate
 
 ---
 
-## Running migrations on PAO DEV DB (`pulse_pao_dev`)
+## Running migrations on PAO DEV DB (`runic_pao_dev`)
 
 Use on `feature/pao` branch.
 
@@ -51,11 +51,11 @@ Use on `feature/pao` branch.
 
 ```powershell
 # Create the DB inside the running container
-docker exec pulse-timescaledb psql -U pulse -d pulse -c "CREATE DATABASE pulse_pao_dev OWNER pulse;"
+docker exec runic-timescaledb psql -U runic -d runic -c "CREATE DATABASE runic_pao_dev OWNER runic;"
 
 # Apply all existing migrations so the schema matches prod
 cd packages/db
-$env:DATABASE_URL = "postgresql://pulse:pulse@localhost:5432/pulse_pao_dev?schema=public"
+$env:DATABASE_URL = "postgresql://runic:runic@localhost:5432/runic_pao_dev?schema=public"
 npx prisma migrate deploy
 npx prisma generate
 ```
@@ -66,7 +66,7 @@ npx prisma generate
 2. From `packages/db/`:
 
    ```powershell
-   $env:DATABASE_URL = "postgresql://pulse:pulse@localhost:5432/pulse_pao_dev?schema=public"
+   $env:DATABASE_URL = "postgresql://runic:runic@localhost:5432/runic_pao_dev?schema=public"
    npx prisma migrate dev --name add_pao_<thing>
    npx prisma generate
    ```
@@ -79,7 +79,7 @@ Set `DATABASE_URL` from `.env.pao` when starting an app. Easiest way:
 
 ```powershell
 # In whichever shell starts the app
-$env:DATABASE_URL = "postgresql://pulse:pulse@localhost:5432/pulse_pao_dev?schema=public"
+$env:DATABASE_URL = "postgresql://runic:runic@localhost:5432/runic_pao_dev?schema=public"
 npm run dev
 ```
 
@@ -105,11 +105,11 @@ npx dotenv -e ../../.env.pao -- npm run dev
 ## Safety rules
 
 - ❌ Never run `prisma migrate deploy` from `feature/pao` with the prod `DATABASE_URL`.
-- ❌ Never run `prisma migrate dev` against `pulse` — it can drop data on drift.
+- ❌ Never run `prisma migrate dev` against `runic` — it can drop data on drift.
 - ❌ Never commit `.env` or `.env.pao` (covered by `.gitignore`).
 - ✅ Always `cd packages/db` before running Prisma commands.
 - ✅ Always verify the URL printed by Prisma (`Datasource "db": PostgreSQL database "..."`) matches what you intended **before** confirming.
-- ✅ When merging `feature/pao` → `main`, the migrations created against `pulse_pao_dev` will be applied to prod by running `prisma migrate deploy` on `main` with the prod `DATABASE_URL`.
+- ✅ When merging `feature/pao` → `main`, the migrations created against `runic_pao_dev` will be applied to prod by running `prisma migrate deploy` on `main` with the prod `DATABASE_URL`.
 
 ---
 
@@ -118,18 +118,18 @@ npx dotenv -e ../../.env.pao -- npm run dev
 List databases in the container:
 
 ```powershell
-docker exec pulse-timescaledb psql -U pulse -l
+docker exec runic-timescaledb psql -U runic -l
 ```
 
 List tables in either DB:
 
 ```powershell
-docker exec pulse-timescaledb psql -U pulse -d pulse -c "\dt"
-docker exec pulse-timescaledb psql -U pulse -d pulse_pao_dev -c "\dt"
+docker exec runic-timescaledb psql -U runic -d runic -c "\dt"
+docker exec runic-timescaledb psql -U runic -d runic_pao_dev -c "\dt"
 ```
 
 Check what migrations have run on a given DB:
 
 ```powershell
-docker exec pulse-timescaledb psql -U pulse -d pulse_pao_dev -c "SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at;"
+docker exec runic-timescaledb psql -U runic -d runic_pao_dev -c "SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at;"
 ```

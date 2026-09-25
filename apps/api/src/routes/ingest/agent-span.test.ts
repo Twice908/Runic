@@ -16,7 +16,7 @@ vi.mock('../../env', () => ({
   },
 }))
 
-vi.mock('@pulse/db', () => ({
+vi.mock('@runic/db', () => ({
   prisma: {
     project: { findUnique: vi.fn() },
   },
@@ -57,7 +57,7 @@ describe('POST /ingest/agent-span', () => {
 
   beforeEach(async () => {
     app = await buildApp()
-    const { prisma } = await import('@pulse/db')
+    const { prisma } = await import('@runic/db')
     vi.mocked(prisma.project.findUnique).mockResolvedValue({ id: 'proj_test' } as never)
   })
 
@@ -121,7 +121,7 @@ describe('POST /ingest/agent-span', () => {
   })
 
   it('returns 401 when API key is not found in DB', async () => {
-    const { prisma } = await import('@pulse/db')
+    const { prisma } = await import('@runic/db')
     vi.mocked(prisma.project.findUnique).mockResolvedValue(null)
 
     const res = await app.inject({

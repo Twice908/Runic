@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { hashApiKey } from '../lib/api-key'
 import { isOverPlanLimit } from '../lib/plan-limits'
 import { ingestQueue } from '../lib/queue'

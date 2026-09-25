@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { prisma } from '@pulse/db'
-import type { ProjectStats } from '@pulse/types'
+import { prisma } from '@runic/db'
+import type { ProjectStats } from '@runic/types'
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
 

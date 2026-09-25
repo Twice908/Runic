@@ -1,11 +1,11 @@
 {
-  "name": "@pulse/drift-agent",
+  "name": "@runic/drift-agent",
   "version": "0.0.1",
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "pulse-drift": "./dist/cli.js"
+    "runic-drift": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -21,5 +21,15 @@
     "@types/node": "20.0.0",
     "typescript": "5.5.4",
     "vitest": "2.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Twice908/runic.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "runic"
+  ]
 }

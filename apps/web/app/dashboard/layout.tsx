@@ -1,8 +1,8 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import Sidebar from '@/components/Sidebar'
-import type { ProjectSummary } from '@pulse/types'
+import type { ProjectSummary } from '@runic/types'
 
 const PROJECT_SELECT = {
   select: { id: true, name: true, apiKeyPrefix: true, createdAt: true },

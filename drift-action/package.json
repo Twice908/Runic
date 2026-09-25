@@ -1,7 +1,7 @@
 {
-  "name": "pulse-drift-action",
+  "name": "runic-drift-action",
   "version": "1.0.0",
-  "description": "GitHub Action — Pulse Drift Check",
+  "description": "GitHub Action — Runic Drift Check",
   "private": true,
   "main": "dist/index.js",
   "engines": {
@@ -17,5 +17,12 @@
     "@types/node": "20.0.0",
     "@vercel/ncc": "0.38.3",
     "typescript": "5.5.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Twice908/runic.git"
+  },
+  "keywords": [
+    "runic"
+  ]
 }

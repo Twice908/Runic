@@ -1,5 +1,5 @@
 {
-  "name": "@pulse/node",
+  "name": "@runic/node",
   "version": "0.1.0",
   "description": "Lightweight observability SDK for Node.js backends",
   "main": "dist/index.js",
@@ -22,8 +22,12 @@
     "fastify": ">=4.0.0"
   },
   "peerDependenciesMeta": {
-    "express": { "optional": true },
-    "fastify": { "optional": true }
+    "express": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    }
   },
   "dependencies": {
     "fastify-plugin": "^4.5.1"
@@ -35,5 +39,15 @@
     "fastify": "^4.26.1",
     "typescript": "^5.5.0",
     "vitest": "2.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Twice908/runic.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "runic"
+  ]
 }

@@ -1,4 +1,4 @@
-# Pulse — Complete Architecture Map
+# Runic — Complete Architecture Map
 
 > Generated 2026-05-19. All file paths, field names, route paths, queue names, and env vars are sourced directly from the codebase. Nothing is invented.
 
@@ -7,7 +7,7 @@
 ## 1. Monorepo Structure
 
 ```
-pulse/
+runic/
 ├── apps/
 │   ├── api/                          Fastify ingestion + REST API server (port 3001)
 │   │   └── src/
@@ -48,7 +48,7 @@ pulse/
 │   │
 │   └── web/                          Next.js 14 App Router dashboard (port 3000)
 │       ├── middleware.ts             Clerk auth gate for /dashboard/**
-│       ├── next.config.js            Loads root .env; transpiles @pulse/types, @pulse/db
+│       ├── next.config.js            Loads root .env; transpiles @runic/types, @runic/db
 │       ├── app/
 │       │   ├── layout.tsx            Root layout: ClerkProvider, Inter font
 │       │   ├── page.tsx              Landing page / redirect to /dashboard if signed in
@@ -115,18 +115,18 @@ pulse/
     │           └── 20260518000000_phase4_alerting/migration.sql    AlertEvent table + Alert.url/route columns
     ├── types/                        Shared TypeScript interfaces (no runtime code)
     │   └── src/index.ts              All exported types: IngestEvent, RequestLogRow, ProjectStats, AlertRule, etc.
-    └── sdk/                          @pulse/node npm package (Express/Fastify middleware)
+    └── sdk/                          @runic/node npm package (Express/Fastify middleware)
         └── src/
-            ├── index.ts              Exports: pulse, pulsePlugin, captureError
-            ├── types.ts              PulseConfig, IngestEvent interfaces
+            ├── index.ts              Exports: runic, runicPlugin, captureError
+            ├── types.ts              RunicConfig, IngestEvent interfaces
             ├── core/
-            │   ├── client.ts         PulseClient — sends batches to POST /ingest
+            │   ├── client.ts         RunicClient — sends batches to POST /ingest
             │   ├── buffer.ts         BatchBuffer — 500 ms interval or 10-event flush
             │   ├── sanitizer.ts      Header/field redaction rules
             │   └── errors.ts         captureError() — manual error reporting
             └── middleware/
-                ├── express.ts        pulse() RequestHandler — patches res.end
-                └── fastify.ts        pulsePlugin fp() — onRequest + onResponse hooks
+                ├── express.ts        runic() RequestHandler — patches res.end
+                └── fastify.ts        runicPlugin fp() — onRequest + onResponse hooks
 ```
 
 ---
@@ -135,9 +135,9 @@ pulse/
 
 ```mermaid
 flowchart TD
-    SDK["@pulse/node SDK\npackages/sdk/src/middleware/express.ts\nor fastify.ts"]
+    SDK["@runic/node SDK\npackages/sdk/src/middleware/express.ts\nor fastify.ts"]
     BUFFER["BatchBuffer\npackages/sdk/src/core/buffer.ts\n500ms or 10 events"]
-    CLIENT["PulseClient\npackages/sdk/src/core/client.ts\nPOST /ingest"]
+    CLIENT["RunicClient\npackages/sdk/src/core/client.ts\nPOST /ingest"]
 
     INGEST_ROUTE["POST /ingest\napps/api/src/routes/ingest.ts\nAPI-key auth + plan check"]
     REDIS_Q["BullMQ Queue: 'ingest'\napps/api/src/lib/queue.ts\nRedis backed"]
@@ -644,7 +644,7 @@ All four pause polling when `document.visibilityState === 'hidden'` and resume o
 |----------|---------|-------------|----------|---------|
 | `NODE_ENV` | api, worker, web | Development/production mode switches | No | `development` |
 | `PORT` | api | Fastify listen port | No | `3001` |
-| `DATABASE_URL` | api, worker, web (via Prisma) | PostgreSQL + TimescaleDB connection string | Yes | `postgresql://pulse:pulse@localhost:5432/pulse` |
+| `DATABASE_URL` | api, worker, web (via Prisma) | PostgreSQL + TimescaleDB connection string | Yes | `postgresql://runic:runic@localhost:5432/runic` |
 | `REDIS_URL` | api, worker | IORedis connection URL | Yes | `redis://localhost:6379` |
 | `CLERK_SECRET_KEY` | api, web | Clerk backend API key for JWT verification | Yes | `sk_test_abc...` |
 | `CLERK_WEBHOOK_SECRET` | api | Svix signing secret for verifying Clerk webhook payloads | Yes | `whsec_abc...` |
@@ -660,7 +660,7 @@ All four pause polling when `document.visibilityState === 'hidden'` and resume o
 | `STRIPE_SECRET_KEY` | — | Stripe billing (Phase 6, no code yet) | No | `sk_test_abc...` |
 | `STRIPE_WEBHOOK_SECRET` | — | Stripe webhook (Phase 6, no code yet) | No | `whsec_abc...` |
 | `NEXT_PUBLIC_APP_URL` | worker | Dashboard URL injected into alert email CTAs | No | `http://localhost:3000` |
-| `PULSE_HOST` | sdk consumers | SDK ingest endpoint (overrides default) | No | `https://api.pulse.dev` |
+| `RUNIC_HOST` | sdk consumers | SDK ingest endpoint (overrides default) | No | `https://api.runic.dev` |
 
 ---
 
@@ -670,13 +670,13 @@ All four pause polling when `document.visibilityState === 'hidden'` and resume o
 
 | Service | Image | Container Name | Ports | Volumes | Health Check |
 |---------|-------|---------------|-------|---------|-------------|
-| `timescaledb` | `timescale/timescaledb:latest-pg15` | `pulse-timescaledb` | `5432:5432` | `pgdata:/var/lib/postgresql/data` | `pg_isready -U pulse -d pulse` (10 s interval, 5 retries) |
-| `redis` | `redis:7-alpine` | `pulse-redis` | `6379:6379` | `redisdata:/data` | `redis-cli ping` (10 s interval, 5 retries) |
+| `timescaledb` | `timescale/timescaledb:latest-pg15` | `runic-timescaledb` | `5432:5432` | `pgdata:/var/lib/postgresql/data` | `pg_isready -U runic -d runic` (10 s interval, 5 retries) |
+| `redis` | `redis:7-alpine` | `runic-redis` | `6379:6379` | `redisdata:/data` | `redis-cli ping` (10 s interval, 5 retries) |
 
 **Env vars for timescaledb container:**
-- `POSTGRES_USER=pulse`
-- `POSTGRES_PASSWORD=pulse`
-- `POSTGRES_DB=pulse`
+- `POSTGRES_USER=runic`
+- `POSTGRES_PASSWORD=runic`
+- `POSTGRES_DB=runic`
 
 **Named volumes:** `pgdata`, `redisdata` (persisted across container restarts).
 
@@ -718,12 +718,12 @@ apps/web (port 3000)
 
 ## 13. SDK (`packages/sdk`)
 
-Package name: `@pulse/node`. Published to npm. Supports Express and Fastify 4.x.
+Package name: `@runic/node`. Published to npm. Supports Express and Fastify 4.x.
 
 ### Middleware Lifecycle — Express (`middleware/express.ts`)
 
-1. User calls `app.use(pulse({ apiKey: 'pk_live_...' }))`.
-2. `PulseClient` is instantiated with `host`, `timeout`, `debug` config.
+1. User calls `app.use(runic({ apiKey: 'pk_live_...' }))`.
+2. `RunicClient` is instantiated with `host`, `timeout`, `debug` config.
 3. `setClient(client)` stores reference for `captureError()` to use.
 4. `BatchBuffer` is created with `onFlush: (events) => client.send(events)`.
 5. `buffer.start()` starts the 500 ms flush interval (timer is `unref()`'d).
@@ -734,9 +734,9 @@ Package name: `@pulse/node`. Published to npm. Supports Express and Fastify 4.x.
 
 ### Middleware Lifecycle — Fastify (`middleware/fastify.ts`)
 
-1. User calls `fastify.register(pulsePlugin, { apiKey: 'pk_live_...' })`.
-2. Same `PulseClient` + `BatchBuffer` setup as Express.
-3. `fastify.addHook('onRequest', ...)` stores `req.pulseStartTime = Date.now()`.
+1. User calls `fastify.register(runicPlugin, { apiKey: 'pk_live_...' })`.
+2. Same `RunicClient` + `BatchBuffer` setup as Express.
+3. `fastify.addHook('onRequest', ...)` stores `req.runicStartTime = Date.now()`.
 4. `fastify.addHook('onResponse', ...)` computes `responseTime`, applies filters, calls `buffer.add(event)`.
 5. `route` prefers `req.routerPath` (Fastify matched pattern) over raw `req.url`.
 
@@ -753,7 +753,7 @@ Package name: `@pulse/node`. Published to npm. Supports Express and Fastify 4.x.
 ### Batching & Sending
 
 - Buffer holds events until: (a) 10 events accumulated, OR (b) 500 ms elapsed.
-- `PulseClient.send(events)` POSTs to `{host}/ingest` with `Authorization: Bearer {apiKey}`.
+- `RunicClient.send(events)` POSTs to `{host}/ingest` with `Authorization: Bearer {apiKey}`.
 - Uses `AbortController` with configurable timeout (default 5 000 ms).
 - **On failure**: logs warning and silently drops events (never throws, never retries).
 - **402 response**: logs "monthly limit reached" warning.
@@ -785,9 +785,9 @@ graph TD
     API["apps/api"]
     WORKER["apps/worker"]
     WEB["apps/web"]
-    DB["@pulse/db"]
-    TYPES["@pulse/types"]
-    SDK["@pulse/node (sdk)"]
+    DB["@runic/db"]
+    TYPES["@runic/types"]
+    SDK["@runic/node (sdk)"]
 
     API -->|"imports PrismaClient\n(singleton)"| DB
     API -->|"imports IngestEvent\nRequestLogRow\nProjectStats\nApiResponse"| TYPES
@@ -800,7 +800,7 @@ graph TD
 
     SDK -.->|"no internal deps\n(standalone npm pkg)"| TYPES
 
-    note1["SDK users import @pulse/node\nand point it at apps/api"]
+    note1["SDK users import @runic/node\nand point it at apps/api"]
 ```
 
 ---
@@ -823,8 +823,8 @@ None found. All components fetch live data from API routes. However:
 
 | Feature | Where Stubbed | Status |
 |---------|-------------|--------|
-| `captureBody: boolean` in `PulseConfig` | `packages/sdk/src/types.ts` | Field exists in type; body capture logic not implemented in middleware |
-| `captureHeaders: boolean` in `PulseConfig` | `packages/sdk/src/types.ts` | Field exists in type; header capture not implemented |
+| `captureBody: boolean` in `RunicConfig` | `packages/sdk/src/types.ts` | Field exists in type; body capture logic not implemented in middleware |
+| `captureHeaders: boolean` in `RunicConfig` | `packages/sdk/src/types.ts` | Field exists in type; header capture not implemented |
 | Stripe billing (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) | `.env.example` | Env vars present but zero code references — Phase 6 not started |
 
 ### Phases with No Code Yet

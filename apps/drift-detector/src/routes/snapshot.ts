@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { Plan } from '@pulse/db'
+import { Plan } from '@runic/db'
 import { prisma } from '../plugins/prisma'
 import { resolveProjectFromApiKey } from '../middleware/auth'
 import { driftDiffQueue } from '../lib/queue'

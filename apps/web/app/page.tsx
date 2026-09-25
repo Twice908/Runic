@@ -9,7 +9,7 @@ export default async function HomePage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-white">
-      <h1 className="text-5xl font-bold tracking-tight text-gray-900">Pulse</h1>
+      <h1 className="text-5xl font-bold tracking-tight text-gray-900">Runic</h1>
       <p className="mt-4 text-lg text-gray-600">Backend observability for developers</p>
       <div className="mt-8 flex gap-4">
         <a

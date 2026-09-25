@@ -1,10 +1,10 @@
-import type { PulseClient } from './client'
+import type { RunicClient } from './client'
 import type { IngestEvent } from '../types'
 
 // Module-level reference set by the middleware on first initialization.
-let _client: PulseClient | null = null
+let _client: RunicClient | null = null
 
-export function setClient(client: PulseClient): void {
+export function setClient(client: RunicClient): void {
   _client = client
 }
 
@@ -13,7 +13,7 @@ export function captureError(
   context?: { route?: string; method?: string },
 ): void {
   if (!_client) {
-    console.warn('[Pulse] captureError called before pulse() middleware was initialized — event dropped')
+    console.warn('[Runic] captureError called before runic() middleware was initialized — event dropped')
     return
   }
 

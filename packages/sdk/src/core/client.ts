@@ -1,10 +1,10 @@
-import type { IngestEvent, PulseClientConfig } from '../types'
+import type { IngestEvent, RunicClientConfig } from '../types'
 
-const DEFAULT_HOST = process.env['PULSE_HOST'] ?? 'https://api.pulse.dev'
+const DEFAULT_HOST = process.env['RUNIC_HOST'] ?? 'https://api.runic.dev'
 const DEFAULT_TIMEOUT_MS = 5000
 
-export class PulseClient {
-  private readonly config: PulseClientConfig
+export class RunicClient {
+  private readonly config: RunicClientConfig
   private hasPrintedSendError = false
 
   constructor(config: {
@@ -20,10 +20,10 @@ export class PulseClient {
       debug: config.debug ?? false,
     }
 
-    if (!config.host && !process.env['PULSE_HOST']) {
+    if (!config.host && !process.env['RUNIC_HOST']) {
       console.warn(
-        '[Pulse] PULSE_HOST is not set — defaulting to https://api.pulse.dev. ' +
-        'Set PULSE_HOST=http://localhost:3000 for local development.',
+        '[Runic] RUNIC_HOST is not set — defaulting to https://api.runic.dev. ' +
+        'Set RUNIC_HOST=http://localhost:3000 for local development.',
       )
     }
   }
@@ -36,7 +36,7 @@ export class PulseClient {
 
     try {
       if (this.config.debug) {
-        console.log(`[Pulse] Sending ${events.length} event(s) to ${this.config.host}/ingest`)
+        console.log(`[Runic] Sending ${events.length} event(s) to ${this.config.host}/ingest`)
       }
 
       const res = await fetch(`${this.config.host}/ingest`, {
@@ -52,35 +52,35 @@ export class PulseClient {
       clearTimeout(timer)
 
       if (res.status === 401) {
-        console.warn('[Pulse] Invalid API key — check your apiKey config')
+        console.warn('[Runic] Invalid API key — check your apiKey config')
         return
       }
       if (res.status === 429) {
-        console.warn('[Pulse] Rate limit hit — reduce request volume or upgrade plan')
+        console.warn('[Runic] Rate limit hit — reduce request volume or upgrade plan')
         return
       }
       if (res.status === 402) {
-        console.warn('[Pulse] Monthly request limit reached — upgrade your plan to continue sending data')
+        console.warn('[Runic] Monthly request limit reached — upgrade your plan to continue sending data')
         return
       }
       if (!res.ok) {
         if (this.config.debug) {
-          console.log(`[Pulse] Non-200 response: ${res.status}`)
+          console.log(`[Runic] Non-200 response: ${res.status}`)
         }
         return
       }
 
       if (this.config.debug) {
-        console.log(`[Pulse] Successfully sent ${events.length} event(s)`)
+        console.log(`[Runic] Successfully sent ${events.length} event(s)`)
       }
     } catch (err) {
       clearTimeout(timer)
       const message = err instanceof Error ? err.message : String(err)
       if (this.config.debug) {
-        console.log(`[Pulse] Send failed (events dropped): ${message}`)
+        console.log(`[Runic] Send failed (events dropped): ${message}`)
       } else if (!this.hasPrintedSendError) {
         this.hasPrintedSendError = true
-        console.warn(`[Pulse] Failed to send events to ${this.config.host} — check PULSE_HOST and PULSE_API_KEY. (${message})`)
+        console.warn(`[Runic] Failed to send events to ${this.config.host} — check RUNIC_HOST and RUNIC_API_KEY. (${message})`)
       }
       // Silently drop — never throw, never reject.
     }

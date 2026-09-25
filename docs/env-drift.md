@@ -1,5 +1,5 @@
-# Pulse Drift — Env & Secret Drift Detector
-> Feature addition to Pulse Observe monorepo. Slot into existing infra — do not scaffold new monorepo, auth, or queue systems.
+# Runic Drift — Env & Secret Drift Detector
+> Feature addition to Runic Observe monorepo. Slot into existing infra — do not scaffold new monorepo, auth, or queue systems.
 
 ---
 
@@ -9,7 +9,7 @@
 - All agent→API over HTTPS only
 - Deterministic diffs — same two manifests always produce same result
 - Ignoring a key resolves its existing DriftEvents immediately, not just future ones
-- Use existing Pulse API key auth for agent endpoints, existing Clerk session for dashboard
+- Use existing Runic API key auth for agent endpoints, existing Clerk session for dashboard
 
 ---
 
@@ -79,10 +79,10 @@ After adding: `cd packages/db && npx prisma generate && npx prisma migrate dev -
 
 **CLI commands:**
 ```
-pulse-drift snapshot --env production --project-key pk_live_xxx
-pulse-drift snapshot --env staging --dotenv .env.staging --project-key pk_live_xxx
-pulse-drift watch --env staging --interval 15 --project-key pk_live_xxx
-pulse-drift ci-check --env staging --fail-on-drift --ignore-keys DATABASE_URL,NODE_ENV --project-key pk_live_xxx
+runic-drift snapshot --env production --project-key pk_live_xxx
+runic-drift snapshot --env staging --dotenv .env.staging --project-key pk_live_xxx
+runic-drift watch --env staging --interval 15 --project-key pk_live_xxx
+runic-drift ci-check --env staging --fail-on-drift --ignore-keys DATABASE_URL,NODE_ENV --project-key pk_live_xxx
 ```
 
 Use `commander` or `yargs`. Add `--json` flag for CI log parsing.
@@ -130,15 +130,15 @@ DRIFT_COLLECTOR_PORT=3003
 DRIFT_REDIS_KEY_MATRIX_TTL=30
 DRIFT_MAX_KEYS_PER_SNAPSHOT=500
 DRIFT_INTERNAL_TOKEN=
-PULSE_DRIFT_API_URL=https://drift.pulseobserve.com
-PULSE_DRIFT_ENV=production
+RUNIC_DRIFT_API_URL=https://drift.runicobserve.com
+RUNIC_DRIFT_ENV=production
 ```
 
 ---
 
 ## Build Order
 
-**D-1:** Prisma models + migrate → drift queue → `apps/drift-detector` scaffold → `POST /v1/snapshot` → diff worker (missing/extra only, no stale yet) → `packages/sdk-drift` → `pulse-drift snapshot` CLI
+**D-1:** Prisma models + migrate → drift queue → `apps/drift-detector` scaffold → `POST /v1/snapshot` → diff worker (missing/extra only, no stale yet) → `packages/sdk-drift` → `runic-drift snapshot` CLI
 
 **D-1:** ✅ Complete — apps/drift-detector (port 3003), packages/sdk-drift, migration add_drift applied
 
@@ -148,9 +148,9 @@ PULSE_DRIFT_ENV=production
 
 **D-3:** ✅ Complete — keys routes, PATCH metadata, stale rotation in worker, alert integration, keys editor page, DriftScore display
 
-**D-4:** `GET /v1/ci-check` → `pulse-drift ci-check` CLI → GitHub Action → settings page with CI snippets
+**D-4:** `GET /v1/ci-check` → `runic-drift ci-check` CLI → GitHub Action → settings page with CI snippets
 
-**D-4:** ✅ Complete — ci-check route, pulse-drift ci-check CLI, GitHub Action stub, settings page with CI snippets
+**D-4:** ✅ Complete — ci-check route, runic-drift ci-check CLI, GitHub Action stub, settings page with CI snippets
 
 ---
 
@@ -169,13 +169,13 @@ Stripe meter: `drift_snapshots_monthly` — 1 event per successful `POST /v1/sna
 
 ## GitHub Action — CI Integration Guide
 
-The `drift-action/` directory contains a self-contained GitHub Action that runs `pulse-drift ci-check` inside any GitHub Actions workflow. It is bundled with `ncc` into a single `dist/index.js` — no `node_modules` required at runner runtime.
+The `drift-action/` directory contains a self-contained GitHub Action that runs `runic-drift ci-check` inside any GitHub Actions workflow. It is bundled with `ncc` into a single `dist/index.js` — no `node_modules` required at runner runtime.
 
 ---
 
 ### How the action works (internal wiring)
 
-| action.yml input | CLI flag passed to `pulse-drift ci-check` |
+| action.yml input | CLI flag passed to `runic-drift ci-check` |
 |---|---|
 | `project-key` | `--project-key <value>` |
 | `environment` | `--env <value>` |
@@ -185,15 +185,15 @@ The `drift-action/` directory contains a self-contained GitHub Action that runs 
 
 The action always adds `--json` so it can parse `{ passed, driftScore, missingKeys, extraKeys }` from stdout. All three outputs (`drift-score`, `missing-keys`, `extra-keys`) are set from the parsed JSON before any failure is raised, so downstream steps can always read them.
 
-The action makes the same HTTP call that `pulse-drift ci-check --json` makes internally, replicated directly in the ncc bundle. No subprocess, no installed binary, no `npm ci` pre-step required — the `dist/index.js` is completely self-contained.
+The action makes the same HTTP call that `runic-drift ci-check --json` makes internally, replicated directly in the ncc bundle. No subprocess, no installed binary, no `npm ci` pre-step required — the `dist/index.js` is completely self-contained.
 
 ---
 
 ### Prerequisites
 
-1. **Pulse API key** — generate one in the Pulse dashboard under *Settings → API Keys*. Store it as a GitHub Actions secret (e.g. `PULSE_API_KEY`).
-2. **Baseline environment set** — the drift check compares against whatever environment is marked as baseline in the Pulse dashboard. Set it once via *Drift → Environments → Set as baseline* or `POST /v1/baseline/:projectId`.
-3. **Snapshot already sent** — at least one `pulse-drift snapshot` run must exist for the environment being checked, otherwise the check returns "no baseline set" and passes by default.
+1. **Runic API key** — generate one in the Runic dashboard under *Settings → API Keys*. Store it as a GitHub Actions secret (e.g. `RUNIC_API_KEY`).
+2. **Baseline environment set** — the drift check compares against whatever environment is marked as baseline in the Runic dashboard. Set it once via *Drift → Environments → Set as baseline* or `POST /v1/baseline/:projectId`.
+3. **Snapshot already sent** — at least one `runic-drift snapshot` run must exist for the environment being checked, otherwise the check returns "no baseline set" and passes by default.
 
 ---
 
@@ -214,10 +214,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pulse Drift Check
+      - name: Runic Drift Check
         uses: ./drift-action          # local action — no version tag needed in monorepo
         with:
-          project-key: ${{ secrets.PULSE_API_KEY }}
+          project-key: ${{ secrets.RUNIC_API_KEY }}
           environment: staging        # must match the env name used in snapshot
           fail-on-drift: 'true'       # fails the job when drift is detected
           ignore-keys: 'NODE_ENV,CI'  # optional: comma-separated keys to exclude
@@ -248,11 +248,11 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      # Send the current env key names to the Pulse drift collector
+      # Send the current env key names to the Runic drift collector
       - run: |
-          npx pulse-drift snapshot \
+          npx runic-drift snapshot \
             --env production \
-            --project-key ${{ secrets.PULSE_API_KEY }}
+            --project-key ${{ secrets.RUNIC_API_KEY }}
 
   # ── CI Check (runs on every PR) ────────────────────────────────────────────
   drift-check:
@@ -261,11 +261,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pulse Drift Check
+      - name: Runic Drift Check
         id: drift
         uses: ./drift-action
         with:
-          project-key: ${{ secrets.PULSE_API_KEY }}
+          project-key: ${{ secrets.RUNIC_API_KEY }}
           environment: staging
           fail-on-drift: 'true'
           ignore-keys: 'NODE_ENV,CI,GITHUB_TOKEN'
@@ -314,10 +314,10 @@ The `dist/index.js` must be committed — GitHub Actions loads it directly from 
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Action step fails with network error | Runner can't reach `drift.pulseobserve.com` | Check firewall/proxy settings; the action calls the API directly over HTTPS |
+| Action step fails with network error | Runner can't reach `drift.runicobserve.com` | Check firewall/proxy settings; the action calls the API directly over HTTPS |
 | `no baseline set` in output | No environment has been marked as baseline | Set baseline in dashboard or via `POST /v1/baseline/:projectId` |
 | Score 100, no drift, but keys changed | Snapshot not sent after deploy | Add the snapshot job (see full workflow above) |
-| Action exits 0 even with `fail-on-drift: 'true'` | Drift check API was unreachable (fail-open design) | Check `PULSE_DRIFT_API_URL` and network connectivity from the runner |
+| Action exits 0 even with `fail-on-drift: 'true'` | Drift check API was unreachable (fail-open design) | Check `RUNIC_DRIFT_API_URL` and network connectivity from the runner |
 
 ---
 

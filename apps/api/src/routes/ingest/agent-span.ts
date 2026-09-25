@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { hashApiKey } from '../../lib/api-key'
 import { agentSpansQueue } from '../../lib/queue'
 import { AgentSpanBatchSchema } from '../../schemas/agent-span.schema'

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 
 export async function requireProjectOwnership(
   clerkUserId: string,

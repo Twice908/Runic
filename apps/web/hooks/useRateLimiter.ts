@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { RateLimitRuleRecord, CreateRateLimitRuleBody } from '@pulse/types'
+import type { RateLimitRuleRecord, CreateRateLimitRuleBody } from '@runic/types'
 
 // ─── useRules ─────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { prisma } from '@pulse/db'
+import { prisma } from '@runic/db'
 import { verifyClerkJwt } from '../lib/auth'
 import { env } from '../env'
 
@@ -248,7 +248,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
           body: JSON.stringify({
             from: env.RESEND_FROM_EMAIL,
             to: alert.destination,
-            subject: 'Test alert from Pulse',
+            subject: 'Test alert from Runic',
             html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px"><h2>Test Notification</h2><p>This is a test notification. Your alert channel is configured correctly.</p><p style="color:#6b7280;font-size:14px">Alert type: ${alert.type} · Project: ${projectId}</p></div>`,
           }),
         })
@@ -265,7 +265,7 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             blocks: [
-              { type: 'header', text: { type: 'plain_text', text: 'Test alert from Pulse' } },
+              { type: 'header', text: { type: 'plain_text', text: 'Test alert from Runic' } },
               { type: 'section', text: { type: 'mrkdwn', text: 'This is a test notification. Your alert channel is configured correctly.' } },
               { type: 'context', elements: [{ type: 'mrkdwn', text: `Alert type: ${alert.type} · Project: ${projectId}` }] },
             ],

@@ -1,17 +1,17 @@
 const express = require('express')
-const { pulse } = require('@pulse/node')
+const { runic } = require('@runic/node')
 
 const app = express()
 const PORT = 4000
 
-// Replace with your actual API key from the Pulse dashboard.
+// Replace with your actual API key from the Runic dashboard.
 // Get one at http://localhost:3000/dashboard after running the full stack.
 const API_KEY = 'pk_live_48a2005bd20bc4c07bb8b0ee97eacea789c6457f3b4d1e2f5d5f1beb86deba10'
 
 app.use(express.json())
 
 app.use(
-  pulse({
+  runic({
     apiKey: API_KEY,
     host: 'http://localhost:3001',
     debug: true,
@@ -47,6 +47,6 @@ app.post('/test/data', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[test-app] Listening on http://localhost:${PORT}`)
-  console.log(`[test-app] Sending events to Pulse API at http://localhost:3001`)
+  console.log(`[test-app] Sending events to Runic API at http://localhost:3001`)
   console.log(`[test-app] Using API key: ${API_KEY.slice(0, 12)}...`)
 })

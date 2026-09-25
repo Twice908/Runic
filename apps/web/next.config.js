@@ -6,7 +6,7 @@ config({ path: resolve(__dirname, '../../.env') })
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@pulse/types', '@pulse/db'],
+  transpilePackages: ['@runic/types', '@runic/db'],
 }
 
 module.exports = nextConfig

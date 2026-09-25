@@ -1,7 +1,7 @@
-# Pulse Rate Limiter — Claude Code Project Memory
+# Runic Rate Limiter — Claude Code Project Memory
 
 > **Context**: This file is the authoritative reference for Claude Code when building the
-> Rate Limiter product line inside the Pulse monorepo. Pulse Observe (the first product) is
+> Rate Limiter product line inside the Runic monorepo. Runic Observe (the first product) is
 > already complete. Rate Limiter is additive — it shares infrastructure, never replaces it.
 > Always read this file before generating any code, schema, or route related to rate limiting.
 
@@ -10,7 +10,7 @@
 ## 1. Where This Lives in the Monorepo
 
 ```
-pulse/
+runic/
 ├── apps/
 │   ├── dashboard/          ← existing Next.js app — add /rate-limiter route group here
 │   ├── observe/            ← existing, do not touch
@@ -19,7 +19,7 @@ pulse/
 │   ├── database/           ← shared Prisma — append new models here, never fork it
 │   ├── queue/              ← shared BullMQ — reuse existing instance
 │   ├── config/             ← shared env/config — add RL-specific vars here
-│   └── sdk/                ← @pulse/node — add rateLimit() middleware here
+│   └── sdk/                ← @runic/node — add rateLimit() middleware here
 ```
 
 **Rule**: Never duplicate shared packages. If `packages/database` already exports a Prisma
@@ -34,7 +34,7 @@ client, import it — don't instantiate a new one inside `apps/rate-limiter`.
 | Enforcement service | Fastify | New `apps/rate-limiter` |
 | Counter storage | Redis sliding window | Reuse existing Redis instance |
 | Rule storage | PostgreSQL via Prisma | New tables on existing DB |
-| SDK layer | `@pulse/node` or new `@pulse/rate-limiter` package | Exports `rateLimit()` |
+| SDK layer | `@runic/node` or new `@runic/rate-limiter` package | Exports `rateLimit()` |
 | Dashboard | New route group in existing Next.js app | `/dashboard/rate-limiter/` |
 | Async analytics | BullMQ (shared) | Enforcement itself is synchronous |
 | Time-series events | TimescaleDB hypertable | `RateLimitEvent` table |
@@ -82,7 +82,7 @@ model RateLimitEvent {
 
 After adding these models, run:
 ```bash
-pnpm --filter @pulse/database prisma migrate dev --name add_rate_limiter
+pnpm --filter @runic/database prisma migrate dev --name add_rate_limiter
 ```
 
 ### 3.2 Redis Key Schema
@@ -184,9 +184,9 @@ export interface RateLimitOptions {
 ### 5.3 Developer usage
 
 ```js
-import { pulse, rateLimit } from '@pulse/node'
+import { runic, rateLimit } from '@runic/node'
 
-app.use(pulse({ apiKey: 'pk_live_...' }))
+app.use(runic({ apiKey: 'pk_live_...' }))
 app.use(rateLimit({ rules: 'auto' }))
 ```
 
@@ -203,7 +203,7 @@ app.use(rateLimit({
 2. Background refresh every 30 seconds
 3. If user's backend has Redis access → do the counter check locally (faster)
 4. If no Redis access → HTTP call to `/v1/check`
-5. If Pulse is unreachable → **fail open** (let request through), log the error
+5. If Runic is unreachable → **fail open** (let request through), log the error
 
 **Hard limit**: The rate limit check must never delay a request by more than 10ms.
 If the check exceeds this, abort and fail open.
@@ -223,7 +223,7 @@ Add these under `apps/dashboard/app/dashboard/[projectId]/rate-limiter/`:
 ```
 
 **UI patterns**: Follow the exact same component patterns, color tokens, and layout
-conventions used in Pulse Observe's dashboard. Do not introduce new design systems.
+conventions used in Runic Observe's dashboard. Do not introduce new design systems.
 
 ---
 
@@ -253,7 +253,7 @@ conventions used in Pulse Observe's dashboard. Do not introduce new design syste
 - [ ] BullMQ consumer writing events to TimescaleDB
 - [ ] Per-rule charts: hit rate, block rate over time
 - [ ] Top offenders view (IPs, API keys)
-- [ ] Alert integration — reuse existing Pulse alert channels (email/Slack from Phase 4 of Observe)
+- [ ] Alert integration — reuse existing Runic alert channels (email/Slack from Phase 4 of Observe)
   - Alert when a rule blocks > N requests in M minutes
   - Alert when a single IP hits > 90% of limit
 
@@ -283,7 +283,7 @@ Do not create a new billing integration — extend the existing one.
 
 | Rule | Detail |
 |---|---|
-| **Fail open** | If Pulse is unreachable, NEVER block user traffic. Always `failOpen: true` by default. |
+| **Fail open** | If Runic is unreachable, NEVER block user traffic. Always `failOpen: true` by default. |
 | **Latency** | `/v1/check` p99 < 5ms. No DB on hot path. |
 | **Atomic counters** | Use Redis `INCR + EXPIRE` only. No read-modify-write. |
 | **Key isolation** | All Redis keys prefixed `rl:{projectId}:`. Cross-project access is a security bug. |
@@ -312,19 +312,19 @@ RATE_LIMITER_CHECK_TIMEOUT_MS=10     # abort check and fail open if exceeded
 - Redis sliding window counter: unit tests covering window boundary conditions (requests
   at the exact start/end of a window must not be double-counted or dropped)
 - `/v1/check`: integration test with a real Redis instance (use `ioredis-mock` for CI)
-- SDK middleware: test fail-open behavior when Pulse service returns 5xx or times out
+- SDK middleware: test fail-open behavior when Runic service returns 5xx or times out
 - Duplicate rule rejection: test the 409 response path
 - Key isolation: test that `projectId` A cannot read or affect counters for `projectId` B
 
 ---
 
-## 12. What Already Exists in Pulse Observe (do not rebuild)
+## 12. What Already Exists in Runic Observe (do not rebuild)
 
 When building Rate Limiter, these are available to import:
 
-- `@pulse/database` — Prisma client, `Project` model (link `RateLimitRule.projectId` to this)
-- `@pulse/queue` — BullMQ instance, queue factory helpers
-- `@pulse/config` — env validation via Zod, shared config object
+- `@runic/database` — Prisma client, `Project` model (link `RateLimitRule.projectId` to this)
+- `@runic/queue` — BullMQ instance, queue factory helpers
+- `@runic/config` — env validation via Zod, shared config object
 - Alert system — email and Slack alerting already built, find the alert service and call it
 - Auth middleware — API key validation already exists, reuse it in `apps/rate-limiter`
 - Dashboard layout — sidebar, nav, project switcher all exist; add rate-limiter nav item only

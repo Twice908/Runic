@@ -4,7 +4,7 @@ import { prisma } from '../plugins/prisma'
 import { redis } from '../plugins/redis'
 import { invalidateRulesCache } from '../lib/rule-cache'
 import { requireInternalToken } from '../middleware/auth'
-import type { RateLimitRuleRecord } from '@pulse/types'
+import type { RateLimitRuleRecord } from '@runic/types'
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 

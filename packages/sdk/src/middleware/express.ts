@@ -1,12 +1,12 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express'
-import { PulseClient } from '../core/client'
+import { RunicClient } from '../core/client'
 import { BatchBuffer } from '../core/buffer'
 import { sanitizeHeaders, sanitizeBody } from '../core/sanitizer'
 import { setClient } from '../core/errors'
-import type { PulseConfig, IngestEvent } from '../types'
+import type { RunicConfig, IngestEvent } from '../types'
 
-export function pulse(config: PulseConfig): RequestHandler {
-  const client = new PulseClient({
+export function runic(config: RunicConfig): RequestHandler {
+  const client = new RunicClient({
     apiKey: config.apiKey,
     host: config.host,
     timeout: config.timeout,
@@ -32,9 +32,9 @@ export function pulse(config: PulseConfig): RequestHandler {
     (config.ignoreMethods ?? []).map((m) => m.toUpperCase()),
   )
 
-  return function pulseMiddleware(req: Request, res: Response, next: NextFunction): void {
+  return function runicMiddleware(req: Request, res: Response, next: NextFunction): void {
     try {
-      if (req.headers['x-pulse-skip-log'] === 'true') {
+      if (req.headers['x-runic-skip-log'] === 'true') {
         next()
         return
       }
